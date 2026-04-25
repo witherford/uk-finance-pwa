@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppState, DEFAULT_STATE, Category, Payment, SideIncome, Holiday, YearlyEvent, CalcMemory, Profile, Asset, Budget } from '../types';
+import { AppState, DEFAULT_STATE, DEFAULT_PROFILE, Category, Payment, SideIncome, Holiday, YearlyEvent, CalcMemory, Profile, Asset, Budget } from '../types';
 import { db, loadVault, saveVault, wipeVault, VaultRecord } from './db';
 import { seal, unseal } from './encryption';
 
@@ -64,6 +64,27 @@ interface Store {
 
 const uid = () => crypto.randomUUID();
 
+function hydrate(parsed: Partial<AppState>): AppState {
+  // Deep-merge profile so older saved vaults pick up new fields (payDate, studentLoanPlans, ...).
+  const profile: Profile = { ...DEFAULT_PROFILE, ...(parsed.profile ?? {}) };
+  if (!profile.payDate || typeof profile.payDate !== 'object') profile.payDate = { mode: 'none' };
+  if (!Array.isArray(profile.studentLoanPlans)) profile.studentLoanPlans = [];
+  if (!profile.marriageAllowance) profile.marriageAllowance = 'none';
+  return {
+    ...DEFAULT_STATE,
+    ...parsed,
+    profile,
+    sideIncomes: parsed.sideIncomes ?? [],
+    categories: parsed.categories ?? DEFAULT_STATE.categories,
+    payments: parsed.payments ?? [],
+    holidays: parsed.holidays ?? [],
+    yearlyEvents: parsed.yearlyEvents ?? [],
+    calcMemory: parsed.calcMemory ?? [],
+    assets: parsed.assets ?? [],
+    budgets: parsed.budgets ?? []
+  };
+}
+
 let saveTimer: number | undefined;
 
 function scheduleSave(get: () => Store) {
@@ -99,7 +120,7 @@ export const useFinanceStore = create<Store>((set, get) => ({
     } else {
       try {
         const parsed = JSON.parse(rec.payload) as AppState;
-        set({ state: { ...DEFAULT_STATE, ...parsed }, unlock: { hasVault: true, encrypted: false, unlocked: true, bootstrapped: true } });
+        set({ state: hydrate(parsed), unlock: { hasVault: true, encrypted: false, unlocked: true, bootstrapped: true } });
       } catch {
         set({ unlock: { hasVault: true, encrypted: false, unlocked: true, bootstrapped: true, error: 'Vault corrupted; starting fresh' } });
       }
@@ -112,7 +133,7 @@ export const useFinanceStore = create<Store>((set, get) => ({
     try {
       const json = await unseal({ payload: rec.payload, iv: rec.iv!, salt: rec.salt! }, password);
       const parsed = JSON.parse(json) as AppState;
-      set({ state: { ...DEFAULT_STATE, ...parsed }, unlock: { hasVault: true, encrypted: true, unlocked: true, password, bootstrapped: true } });
+      set({ state: hydrate(parsed), unlock: { hasVault: true, encrypted: true, unlocked: true, password, bootstrapped: true } });
       return true;
     } catch {
       set(s => ({ unlock: { ...s.unlock, error: 'Incorrect password' } }));
@@ -268,5 +289,5 @@ export const useFinanceStore = create<Store>((set, get) => ({
     };
   }),
 
-  importFullState: (next) => get().apply(() => ({ ...DEFAULT_STATE, ...next }))
+  importFullState: (next) => get().apply(() => hydrate(next))
 }));

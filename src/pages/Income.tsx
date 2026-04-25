@@ -159,16 +159,17 @@ function fmt(n: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(n || 0);
 }
 
-function PayDateEditor({ value, onChange }: { value: PayDateConfig; onChange: (cfg: PayDateConfig) => void }) {
-  const opt = PAY_DATE_OPTIONS.find(o => o.value === value.mode) ?? PAY_DATE_OPTIONS[0];
-  const next = nextPayDate(value);
+function PayDateEditor({ value, onChange }: { value: PayDateConfig | undefined; onChange: (cfg: PayDateConfig) => void }) {
+  const safe: PayDateConfig = value ?? { mode: 'none' };
+  const opt = PAY_DATE_OPTIONS.find(o => o.value === safe.mode) ?? PAY_DATE_OPTIONS[0];
+  const next = nextPayDate(safe);
   return (
     <div className="grid sm:grid-cols-2 gap-3">
       <Field label="When do you get paid?">
         <select
           className="input"
-          value={value.mode}
-          onChange={e => onChange({ ...value, mode: e.target.value as PayDateMode })}
+          value={safe.mode}
+          onChange={e => onChange({ ...safe, mode: e.target.value as PayDateMode })}
         >
           {PAY_DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -180,14 +181,14 @@ function PayDateEditor({ value, onChange }: { value: PayDateConfig; onChange: (c
             type="number"
             min={1}
             max={31}
-            value={value.dayOfMonth ?? 25}
-            onChange={e => onChange({ ...value, dayOfMonth: Math.max(1, Math.min(31, parseInt(e.target.value) || 1)) })}
+            value={safe.dayOfMonth ?? 25}
+            onChange={e => onChange({ ...safe, dayOfMonth: Math.max(1, Math.min(31, parseInt(e.target.value) || 1)) })}
           />
         </Field>
       )}
       {opt.needsDay && (
         <Field label="If pay date lands on a weekend">
-          <select className="input" value={value.rollFromWeekend ?? 'backward'} onChange={e => onChange({ ...value, rollFromWeekend: e.target.value as 'forward' | 'backward' })}>
+          <select className="input" value={safe.rollFromWeekend ?? 'backward'} onChange={e => onChange({ ...safe, rollFromWeekend: e.target.value as 'forward' | 'backward' })}>
             <option value="backward">Pay the Friday before</option>
             <option value="forward">Pay the next Monday</option>
           </select>
@@ -195,14 +196,14 @@ function PayDateEditor({ value, onChange }: { value: PayDateConfig; onChange: (c
       )}
       {opt.needsWeekday && (
         <Field label="Weekday">
-          <select className="input" value={value.weekday ?? 5} onChange={e => onChange({ ...value, weekday: parseInt(e.target.value, 10) as Weekday })}>
+          <select className="input" value={safe.weekday ?? 5} onChange={e => onChange({ ...safe, weekday: parseInt(e.target.value, 10) as Weekday })}>
             {WEEKDAY_LABELS.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
           </select>
         </Field>
       )}
       {opt.needsAnchor && (
         <Field label="An example past pay date (anchors fortnight)">
-          <input className="input" type="date" value={value.anchorDate ?? ''} onChange={e => onChange({ ...value, anchorDate: e.target.value })} />
+          <input className="input" type="date" value={safe.anchorDate ?? ''} onChange={e => onChange({ ...safe, anchorDate: e.target.value })} />
         </Field>
       )}
       {next && (
