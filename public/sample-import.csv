@@ -1,0 +1,8 @@
+Kind,Category,Name,Provider,AccountRef,Amount,Frequency,StartDate,EndDate,Notes
+bill,Utilities,Electricity,Octopus Energy,ACC-12345,85.00,monthly,2025-01-01,,Direct debit
+bill,Utilities,Internet,BT,BT-9876,39.99,monthly,2025-01-15,,
+bill,Housing,Rent,Landlord,,1200.00,monthly,2025-01-01,2026-12-31,Fixed term
+bill,Subscriptions,Netflix,Netflix,,12.99,monthly,2025-01-05,,
+bill,Insurance,Car insurance,Aviva,POL-AV-2025,42.50,monthly,2025-03-01,,
+debt,Credit card,Barclaycard,Barclays,4000-XXXX,75.00,monthly,2025-01-20,2027-06-20,Min payment
+saving,Emergency fund,Easy access ISA,Marcus,GS-ISA-1,200.00,monthly,2025-01-01,,

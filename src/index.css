@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+html { scroll-behavior: smooth; }
+body { margin: 0; -webkit-font-smoothing: antialiased; }
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm;
+  }
+  .card-pad { @apply p-4 sm:p-5; }
+  .btn { @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-brand-500 text-white hover:bg-brand-600; }
+  .btn-secondary { @apply btn bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200; }
+  .btn-danger { @apply btn bg-red-500 text-white hover:bg-red-600; }
+  .btn-ghost { @apply btn hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200; }
+  .input {
+    @apply w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500;
+  }
+  .label { @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1; }
+  .chip { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium; }
+  .table-th { @apply text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-3 py-2; }
+  .table-td { @apply px-3 py-2 text-sm border-t border-slate-100 dark:border-slate-800; }
+}
+
+/* nice scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(100,116,139,.4); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,.6); }
+
+@media print {
+  header, aside, .no-print { display: none !important; }
+  main { overflow: visible !important; padding: 0 !important; }
+  body, html, #root { background: white !important; color: black !important; }
+  .card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+  .recharts-wrapper { page-break-inside: avoid; }
+}
