@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns';
 import { expandOccurrences } from '../lib/frequency';
+import { payDatesInRange } from '../lib/pay-date';
 
 export function CalendarMini() {
   const state = useFinanceStore(s => s.state);
@@ -30,6 +31,9 @@ export function CalendarMini() {
       const ev = parseISO(e.date);
       const inThisYear = new Date(cursor.getFullYear(), ev.getMonth(), ev.getDate());
       if (inThisYear >= gridStart && inThisYear <= gridEnd) push(inThisYear, e.name);
+    }
+    for (const d of payDatesInRange(state.profile.payDate, gridStart, gridEnd)) {
+      push(d, '💷 Pay day', '#22c55e');
     }
     return map;
   }, [state, gridStart, gridEnd, cursor]);

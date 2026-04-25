@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { computeTax } from '../lib/uk-tax';
-import { annualAmount, isActive, PeriodKey } from '../lib/frequency';
+import { annualAmount, isActive, expandOccurrences, PeriodKey } from '../lib/frequency';
+import { nextPayDate, daysUntilPay } from '../lib/pay-date';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { PageHeader, StatCard } from '../components/common';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -47,6 +49,22 @@ export function Breakdown() {
     { name: 'Remaining', value: remaining }
   ];
 
+  // Pay-cycle insights
+  const next = nextPayDate(state.profile.payDate);
+  const days = daysUntilPay(state.profile.payDate);
+  const today = new Date();
+  let outgoingsToPayday = 0;
+  if (next) {
+    for (const p of state.payments) {
+      if (!isActive(p, today)) continue;
+      if (p.kind === 'saving') continue;
+      const occs = expandOccurrences(p, today, next);
+      outgoingsToPayday += occs.length * p.amount;
+    }
+  }
+  const after = next ? nextPayDate(state.profile.payDate, new Date(next.getTime() + 86400000)) : null;
+  const cycleDays = next && after ? differenceInCalendarDays(after, next) : 0;
+
   return (
     <div>
       <PageHeader
@@ -70,6 +88,28 @@ export function Breakdown() {
         <StatCard label="Savings" value={fmt(sav)} accent="text-sky-500" />
         <StatCard label="Remaining" value={fmt(remaining)} accent={remaining < 0 ? 'text-red-600' : 'text-slate-700 dark:text-slate-200'} />
       </div>
+
+      {next && days != null && (
+        <div className="card card-pad mb-5">
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Next pay day</div>
+              <div className="text-xl font-bold mt-1">{format(next, 'EEE d MMM')}</div>
+              <div className="text-xs text-slate-500">{days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Outgoings before next pay</div>
+              <div className="text-xl font-bold mt-1 text-rose-500">{fmt(outgoingsToPayday)}</div>
+              <div className="text-xs text-slate-500">Bills + debts due before {format(next, 'd MMM')}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Pay cycle length</div>
+              <div className="text-xl font-bold mt-1">{cycleDays} days</div>
+              <div className="text-xs text-slate-500">Between this and next pay day</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="card card-pad h-80">

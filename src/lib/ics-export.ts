@@ -1,6 +1,7 @@
 import { createEvents, EventAttributes } from 'ics';
 import { AppState } from '../types';
 import { expandOccurrences } from './frequency';
+import { payDatesInRange } from './pay-date';
 import { addYears, parseISO } from 'date-fns';
 
 function toIcsDate(d: Date): [number, number, number] {
@@ -49,6 +50,16 @@ export function buildIcs(state: AppState, monthsAhead = 12): string {
       start: toIcsDate(d),
       duration: { days: 1 },
       description: `Target £${h.targetCost.toFixed(2)}, saved £${h.savedToDate.toFixed(2)}`
+    });
+  }
+
+  for (const d of payDatesInRange(state.profile.payDate, from, to)) {
+    events.push({
+      title: '💷 Pay day',
+      start: toIcsDate(d),
+      duration: { days: 1 },
+      description: 'Salary expected',
+      categories: ['salary']
     });
   }
 

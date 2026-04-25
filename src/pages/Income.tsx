@@ -2,7 +2,9 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { computeTax, STUDENT_LOAN } from '../lib/uk-tax';
 import { Field, Money, PageHeader, StatCard, FrequencySelect, NumInput } from '../components/common';
 import { useMemo, useState } from 'react';
-import { Frequency, StudentLoanPlan } from '../types';
+import { Frequency, PayDateConfig, PayDateMode, StudentLoanPlan, Weekday } from '../types';
+import { PAY_DATE_OPTIONS, WEEKDAY_LABELS, nextPayDate } from '../lib/pay-date';
+import { format } from 'date-fns';
 
 export function Income() {
   const profile = useFinanceStore(s => s.state.profile);
@@ -69,6 +71,11 @@ export function Income() {
                 <option value="receiving">Receiving from spouse</option>
               </select>
             </Field>
+          </div>
+
+          <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="font-semibold mb-2">Pay date</div>
+            <PayDateEditor value={profile.payDate} onChange={pd => setProfile({ payDate: pd })} />
           </div>
 
           <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800">
@@ -150,4 +157,59 @@ export function Income() {
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(n || 0);
+}
+
+function PayDateEditor({ value, onChange }: { value: PayDateConfig; onChange: (cfg: PayDateConfig) => void }) {
+  const opt = PAY_DATE_OPTIONS.find(o => o.value === value.mode) ?? PAY_DATE_OPTIONS[0];
+  const next = nextPayDate(value);
+  return (
+    <div className="grid sm:grid-cols-2 gap-3">
+      <Field label="When do you get paid?">
+        <select
+          className="input"
+          value={value.mode}
+          onChange={e => onChange({ ...value, mode: e.target.value as PayDateMode })}
+        >
+          {PAY_DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Field>
+      {opt.needsDay && (
+        <Field label="Day of month (1–31)">
+          <input
+            className="input"
+            type="number"
+            min={1}
+            max={31}
+            value={value.dayOfMonth ?? 25}
+            onChange={e => onChange({ ...value, dayOfMonth: Math.max(1, Math.min(31, parseInt(e.target.value) || 1)) })}
+          />
+        </Field>
+      )}
+      {opt.needsDay && (
+        <Field label="If pay date lands on a weekend">
+          <select className="input" value={value.rollFromWeekend ?? 'backward'} onChange={e => onChange({ ...value, rollFromWeekend: e.target.value as 'forward' | 'backward' })}>
+            <option value="backward">Pay the Friday before</option>
+            <option value="forward">Pay the next Monday</option>
+          </select>
+        </Field>
+      )}
+      {opt.needsWeekday && (
+        <Field label="Weekday">
+          <select className="input" value={value.weekday ?? 5} onChange={e => onChange({ ...value, weekday: parseInt(e.target.value, 10) as Weekday })}>
+            {WEEKDAY_LABELS.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+          </select>
+        </Field>
+      )}
+      {opt.needsAnchor && (
+        <Field label="An example past pay date (anchors fortnight)">
+          <input className="input" type="date" value={value.anchorDate ?? ''} onChange={e => onChange({ ...value, anchorDate: e.target.value })} />
+        </Field>
+      )}
+      {next && (
+        <div className="sm:col-span-2 text-sm text-slate-600 dark:text-slate-300">
+          Next pay day: <span className="font-semibold">{format(next, 'EEEE d MMMM yyyy')}</span>
+        </div>
+      )}
+    </div>
+  );
 }

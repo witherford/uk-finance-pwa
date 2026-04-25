@@ -5,6 +5,7 @@ import { addMonths, addDays, eachDayOfInterval, endOfMonth, endOfWeek, format, i
 import { expandOccurrences } from '../lib/frequency';
 import { buildIcs } from '../lib/ics-export';
 import { downloadBlob } from '../lib/import-export';
+import { payDatesInRange } from '../lib/pay-date';
 
 type View = 'week' | 'month' | 'quarter' | 'sixmonth' | 'year';
 
@@ -42,6 +43,10 @@ export function CalendarPage() {
         const d = new Date(range.start.getFullYear() + y, ev.getMonth(), ev.getDate());
         if (d >= range.start && d <= range.end) push(d, e.name, e.type);
       }
+    }
+    // Pay days
+    for (const d of payDatesInRange(state.profile.payDate, range.start, range.end)) {
+      push(d, '💷 Pay day', 'salary', '#22c55e');
     }
     return map;
   }, [state, range, view]);

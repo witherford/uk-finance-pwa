@@ -15,6 +15,28 @@ export type PaymentKind = 'bill' | 'debt' | 'saving';
 
 export type StudentLoanPlan = 'none' | 'plan1' | 'plan2' | 'plan4' | 'plan5' | 'postgrad';
 
+export type PayDateMode =
+  | 'none'
+  | 'fixed-day-of-month'           // e.g. 25th every month (rolls back if month doesn't have it)
+  | 'last-working-day-of-month'
+  | 'first-working-day-of-month'
+  | 'weekly'                        // every week on weekday
+  | 'fortnightly'                   // every other week on weekday, anchored
+  | 'last-working-day-of-week'      // e.g. Friday usually
+  | 'first-working-day-of-week'     // e.g. Monday usually
+  | 'last-working-day-of-fortnight'
+  | 'first-working-day-of-fortnight';
+
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6; // Sun..Sat
+
+export interface PayDateConfig {
+  mode: PayDateMode;
+  dayOfMonth?: number;   // 1..31 for fixed-day-of-month
+  weekday?: Weekday;     // for weekly/fortnightly
+  anchorDate?: string;   // ISO date — anchor for fortnightly cadence
+  rollFromWeekend?: 'forward' | 'backward'; // for fixed-day-of-month if it lands on weekend
+}
+
 export interface Profile {
   firstName: string;
   themePref: 'light' | 'dark' | 'system';
@@ -29,6 +51,7 @@ export interface Profile {
   region: 'rUK' | 'Scotland';
   studentLoanPlans: StudentLoanPlan[];
   marriageAllowance: 'none' | 'transferring' | 'receiving';
+  payDate: PayDateConfig;
 }
 
 export interface SideIncome {
@@ -129,7 +152,8 @@ export const DEFAULT_PROFILE: Profile = {
   retirementAge: 67,
   region: 'rUK',
   studentLoanPlans: [],
-  marriageAllowance: 'none'
+  marriageAllowance: 'none',
+  payDate: { mode: 'none' }
 };
 
 export const DEFAULT_STATE: AppState = {

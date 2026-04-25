@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { computeTax } from '../lib/uk-tax';
 import { annualAmount, isActive, expandOccurrences } from '../lib/frequency';
+import { payDatesInRange, daysUntilPay, nextPayDate } from '../lib/pay-date';
 import { Money, PageHeader, StatCard } from '../components/common';
 import { CalendarMini } from '../components/CalendarMini';
 import { addMonths, format } from 'date-fns';
@@ -45,8 +46,14 @@ export function Dashboard() {
       const thisYear = new Date(from.getFullYear(), ev.getMonth(), ev.getDate());
       if (thisYear >= from && thisYear <= to) list.push({ date: thisYear, label: e.name, meta: e.type });
     }
-    return list.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 8);
+    for (const d of payDatesInRange(state.profile.payDate, from, to)) {
+      list.push({ date: d, label: '💷 Pay day', meta: 'Salary in', color: '#22c55e' });
+    }
+    return list.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 10);
   }, [state]);
+
+  const next = nextPayDate(state.profile.payDate);
+  const daysToPay = daysUntilPay(state.profile.payDate);
 
   return (
     <div ref={ref}>
@@ -69,6 +76,20 @@ export function Dashboard() {
         <StatCard label="Saving / mo" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(monthlySaving)} accent="text-sky-500" />
         <StatCard label="Remaining / mo" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(remaining)} accent={remaining < 0 ? 'text-red-600' : ''} />
       </div>
+
+      {next && (
+        <div className="card card-pad mb-5 flex items-center gap-4">
+          <div className="text-3xl">💷</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold">Next pay day</div>
+            <div className="text-sm text-slate-500">{format(next, 'EEEE d MMMM yyyy')}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-emerald-500 tabular-nums">{daysToPay === 0 ? 'Today' : `${daysToPay}d`}</div>
+            <div className="text-xs text-slate-500">{daysToPay === 0 ? 'pay day' : daysToPay === 1 ? 'tomorrow' : 'to go'}</div>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="card card-pad">
