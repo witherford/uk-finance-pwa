@@ -23,6 +23,8 @@ import { Budgets } from './pages/Budgets';
 import { Tools } from './pages/Tools';
 import { DebtStrategies } from './pages/DebtStrategies';
 import { CommandPalette } from './components/CommandPalette';
+import { InstallPrompt } from './components/InstallPrompt';
+import { OfflineBadge } from './components/OfflineBadge';
 
 export default function App() {
   const bootstrap = useFinanceStore(s => s.bootstrap);
@@ -32,6 +34,8 @@ export default function App() {
     <ThemeProvider>
       <PasswordGate />
       <CommandPalette />
+      <InstallPrompt />
+      <OfflineBadge />
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />

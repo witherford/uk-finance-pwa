@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { Field, PageHeader } from '../components/common';
+import { isAppInstalled, platform } from '../components/InstallPrompt';
 
 export function Settings() {
   const profile = useFinanceStore(s => s.state.profile);
@@ -65,6 +66,8 @@ export function Settings() {
           {msg && <div className="text-sm text-slate-500">{msg}</div>}
         </section>
 
+        <InstallSection />
+
         <section className="card card-pad space-y-3 lg:col-span-2">
           <div className="font-semibold">Quick actions</div>
           <div className="flex flex-wrap gap-2">
@@ -95,5 +98,53 @@ export function Settings() {
         Estimates here are guidance only based on UK 2025/26 reference figures. Verify against gov.uk before relying on them.
       </div>
     </div>
+  );
+}
+
+function InstallSection() {
+  const [installed, setInstalled] = useState(isAppInstalled());
+  const p = platform();
+
+  useEffect(() => {
+    const m = window.matchMedia('(display-mode: standalone)');
+    const fn = () => setInstalled(isAppInstalled());
+    m.addEventListener?.('change', fn);
+    return () => m.removeEventListener?.('change', fn);
+  }, []);
+
+  return (
+    <section className="card card-pad space-y-3 lg:col-span-2">
+      <div className="font-semibold">📲 Install on your device</div>
+      {installed ? (
+        <div className="text-sm text-emerald-600 dark:text-emerald-400">✓ Installed — running as a standalone app.</div>
+      ) : (
+        <>
+          {p === 'ios' && (
+            <ol className="text-sm text-slate-600 dark:text-slate-300 list-decimal pl-5 space-y-1">
+              <li>Open this page in <strong>Safari</strong> on your iPhone or iPad.</li>
+              <li>Tap the <strong>Share</strong> button (square with arrow).</li>
+              <li>Choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.</li>
+              <li>The app launches full-screen and works fully offline.</li>
+            </ol>
+          )}
+          {p === 'android' && (
+            <ol className="text-sm text-slate-600 dark:text-slate-300 list-decimal pl-5 space-y-1">
+              <li>Open this page in <strong>Chrome</strong> or <strong>Edge</strong>.</li>
+              <li>Tap the menu (⋮) and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+              <li>Confirm. The app appears in your launcher and works offline.</li>
+            </ol>
+          )}
+          {p === 'desktop' && (
+            <ol className="text-sm text-slate-600 dark:text-slate-300 list-decimal pl-5 space-y-1">
+              <li>In Chrome / Edge, click the install icon (▭+) in the address bar, or use the menu → <strong>Install app</strong>.</li>
+              <li>The app gets its own window, dock/taskbar icon, and works offline.</li>
+            </ol>
+          )}
+          <div className="text-xs text-slate-500">
+            This is a Progressive Web App — no app store needed. All data stays on your device.
+          </div>
+        </>
+      )}
+    </section>
   );
 }
