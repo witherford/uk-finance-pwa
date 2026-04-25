@@ -30,6 +30,19 @@ export default function App() {
   const bootstrap = useFinanceStore(s => s.bootstrap);
   useEffect(() => { bootstrap(); }, [bootstrap]);
 
+  // Mobile UX: when a number/date/etc input gains focus, select all so the
+  // leading 0 (or any prior value) gets replaced by the first keystroke.
+  useEffect(() => {
+    const handler = (e: FocusEvent) => {
+      const t = e.target as HTMLInputElement;
+      if (t && t.tagName === 'INPUT' && ['number', 'text', 'tel'].includes(t.type)) {
+        setTimeout(() => { try { t.select(); } catch {} }, 0);
+      }
+    };
+    document.addEventListener('focusin', handler);
+    return () => document.removeEventListener('focusin', handler);
+  }, []);
+
   return (
     <ThemeProvider>
       <PasswordGate />

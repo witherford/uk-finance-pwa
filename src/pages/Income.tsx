@@ -1,6 +1,6 @@
 import { useFinanceStore } from '../store/useFinanceStore';
 import { computeTax, STUDENT_LOAN } from '../lib/uk-tax';
-import { Field, Money, PageHeader, StatCard, FrequencySelect } from '../components/common';
+import { Field, Money, PageHeader, StatCard, FrequencySelect, NumInput } from '../components/common';
 import { useMemo, useState } from 'react';
 import { Frequency, StudentLoanPlan } from '../types';
 
@@ -46,7 +46,7 @@ export function Income() {
               <input className="input" value={profile.taxCode} onChange={e => setProfile({ taxCode: e.target.value.toUpperCase() })} />
             </Field>
             <Field label="Annual salary (gross, £)">
-              <input className="input" type="number" value={profile.salary} onChange={e => setProfile({ salary: parseFloat(e.target.value) || 0 })} />
+              <NumInput value={profile.salary} onChange={n => setProfile({ salary: n })} />
             </Field>
             <Field label="Pension scheme">
               <select className="input" value={profile.pensionScheme} onChange={e => setProfile({ pensionScheme: e.target.value as any })}>
@@ -57,10 +57,10 @@ export function Income() {
               </select>
             </Field>
             <Field label="Your pension contribution (%)">
-              <input className="input" type="number" step="0.1" value={profile.pensionPct} onChange={e => setProfile({ pensionPct: parseFloat(e.target.value) || 0 })} />
+              <NumInput value={profile.pensionPct} onChange={n => setProfile({ pensionPct: n })} step="0.1" />
             </Field>
             <Field label="Employer contribution (%)">
-              <input className="input" type="number" step="0.1" value={profile.employerPensionPct} onChange={e => setProfile({ employerPensionPct: parseFloat(e.target.value) || 0 })} />
+              <NumInput value={profile.employerPensionPct} onChange={n => setProfile({ employerPensionPct: n })} step="0.1" />
             </Field>
             <Field label="Marriage allowance">
               <select className="input" value={profile.marriageAllowance} onChange={e => setProfile({ marriageAllowance: e.target.value as any })}>
@@ -101,7 +101,7 @@ export function Income() {
               setSiName(''); setSiAmount('');
             }}>
               <input className="input sm:col-span-2" placeholder="Name (e.g. Etsy)" value={siName} onChange={e => setSiName(e.target.value)} />
-              <input className="input" type="number" step="0.01" placeholder="Amount £" value={siAmount} onChange={e => setSiAmount(e.target.value)} />
+              <input className="input" type="text" inputMode="decimal" placeholder="Amount £" value={siAmount} onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d*$/.test(v)) setSiAmount(v); }} />
               <FrequencySelect value={siFreq} onChange={setSiFreq} />
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={siTaxable} onChange={e => setSiTaxable(e.target.checked)} />
@@ -116,7 +116,7 @@ export function Income() {
                 {sideIncomes.map(si => (
                   <li key={si.id} className="grid sm:grid-cols-5 gap-2 items-center">
                     <input className="input sm:col-span-2" value={si.name} onChange={e => updateSideIncome(si.id, { name: e.target.value })} />
-                    <input className="input" type="number" step="0.01" value={si.amount} onChange={e => updateSideIncome(si.id, { amount: parseFloat(e.target.value) || 0 })} />
+                    <NumInput value={si.amount} onChange={n => updateSideIncome(si.id, { amount: n })} step="0.01" />
                     <FrequencySelect value={si.frequency} onChange={(f) => updateSideIncome(si.id, { frequency: f })} />
                     <div className="flex items-center justify-between gap-2">
                       <label className="flex items-center gap-2 text-sm">

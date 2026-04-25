@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { Field, PageHeader, StatCard } from '../components/common';
+import { Field, PageHeader, StatCard, NumInput } from '../components/common';
 import { projectPension } from '../lib/savings';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
@@ -25,13 +25,13 @@ export function Pension() {
       <PageHeader title="Pension projection" subtitle="Combine your contributions, employer match, and assumed growth" />
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="card card-pad space-y-3">
-          <Field label="Current age"><input className="input" type="number" value={profile.age} onChange={e => setProfile({ age: parseInt(e.target.value) || 0 })} /></Field>
-          <Field label="Retirement age"><input className="input" type="number" value={profile.retirementAge} onChange={e => setProfile({ retirementAge: parseInt(e.target.value) || 0 })} /></Field>
-          <Field label="Annual salary £"><input className="input" type="number" value={profile.salary} onChange={e => setProfile({ salary: parseFloat(e.target.value) || 0 })} /></Field>
-          <Field label="Your contribution %"><input className="input" type="number" step="0.1" value={profile.pensionPct} onChange={e => setProfile({ pensionPct: parseFloat(e.target.value) || 0 })} /></Field>
-          <Field label="Employer contribution %"><input className="input" type="number" step="0.1" value={profile.employerPensionPct} onChange={e => setProfile({ employerPensionPct: parseFloat(e.target.value) || 0 })} /></Field>
-          <Field label="Assumed annual growth %"><input className="input" type="number" step="0.1" value={growth} onChange={e => setGrowth(parseFloat(e.target.value) || 0)} /></Field>
-          <Field label="Existing pot £"><input className="input" type="number" value={startPot} onChange={e => setStartPot(parseFloat(e.target.value) || 0)} /></Field>
+          <Field label="Current age"><NumInput value={profile.age} onChange={n => setProfile({ age: Math.round(n) })} min={0} max={120} /></Field>
+          <Field label="Retirement age"><NumInput value={profile.retirementAge} onChange={n => setProfile({ retirementAge: Math.round(n) })} min={0} max={120} /></Field>
+          <Field label="Annual salary £"><NumInput value={profile.salary} onChange={n => setProfile({ salary: n })} /></Field>
+          <Field label="Your contribution %"><NumInput value={profile.pensionPct} onChange={n => setProfile({ pensionPct: n })} step="0.1" /></Field>
+          <Field label="Employer contribution %"><NumInput value={profile.employerPensionPct} onChange={n => setProfile({ employerPensionPct: n })} step="0.1" /></Field>
+          <Field label="Assumed annual growth %"><NumInput value={growth} onChange={setGrowth} step="0.1" /></Field>
+          <Field label="Existing pot £"><NumInput value={startPot} onChange={setStartPot} /></Field>
         </div>
 
         <div className="lg:col-span-2 space-y-5">

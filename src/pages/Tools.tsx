@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Field, PageHeader, StatCard } from '../components/common';
+import { Field, PageHeader, StatCard, NumInput } from '../components/common';
 import { mortgageMonthly, mortgageSchedule, stampDuty } from '../lib/uk-tools';
 import { computeTax } from '../lib/uk-tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -45,7 +45,7 @@ function StampDutyTool() {
   return (
     <div className="grid lg:grid-cols-[1fr_2fr] gap-5">
       <div className="card card-pad space-y-3">
-        <Field label="Property price £"><input className="input" type="number" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} /></Field>
+        <Field label="Property price £"><NumInput value={price} onChange={setPrice} /></Field>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ftb} onChange={e => setFtb(e.target.checked)} /> First-time buyer</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={extra} onChange={e => setExtra(e.target.checked)} /> Additional property (5% surcharge)</label>
         <p className="text-xs text-slate-500">England & NI bands (April 2025+). Wales (LTT) and Scotland (LBTT) differ.</p>
@@ -81,10 +81,10 @@ function MortgageTool() {
   return (
     <div className="grid lg:grid-cols-[1fr_2fr] gap-5">
       <div className="card card-pad space-y-3">
-        <Field label="Property price £"><input className="input" type="number" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} /></Field>
-        <Field label="Deposit £"><input className="input" type="number" value={deposit} onChange={e => setDeposit(parseFloat(e.target.value) || 0)} /></Field>
-        <Field label="Interest rate %"><input className="input" type="number" step="0.05" value={rate} onChange={e => setRate(parseFloat(e.target.value) || 0)} /></Field>
-        <Field label="Term (years)"><input className="input" type="number" value={years} onChange={e => setYears(parseFloat(e.target.value) || 0)} /></Field>
+        <Field label="Property price £"><NumInput value={price} onChange={setPrice} /></Field>
+        <Field label="Deposit £"><NumInput value={deposit} onChange={setDeposit} /></Field>
+        <Field label="Interest rate %"><NumInput value={rate} onChange={setRate} step="0.05" /></Field>
+        <Field label="Term (years)"><NumInput value={years} onChange={setYears} /></Field>
       </div>
       <div className="space-y-3">
         <div className="grid sm:grid-cols-3 gap-3">
@@ -127,7 +127,7 @@ function EmergencyFundTool() {
     <div className="grid lg:grid-cols-2 gap-5">
       <div className="card card-pad">
         <Field label="Months of essentials to cover">
-          <input className="input" type="number" min={1} max={12} value={months} onChange={e => setMonths(parseInt(e.target.value) || 0)} />
+          <NumInput value={months} onChange={n => setMonths(Math.round(n))} min={1} max={12} />
         </Field>
         <p className="text-xs text-slate-500 mt-2">Common rule of thumb: 3 months for stable employment, 6 months for self-employed or single-earner households.</p>
       </div>
@@ -160,7 +160,7 @@ function PayRiseTool() {
   return (
     <div className="grid lg:grid-cols-2 gap-5">
       <div className="card card-pad space-y-3">
-        <Field label="Pay rise (£/yr gross)"><input className="input" type="number" value={delta} onChange={e => setDelta(parseFloat(e.target.value) || 0)} /></Field>
+        <Field label="Pay rise (£/yr gross)"><NumInput value={delta} onChange={setDelta} /></Field>
         <p className="text-xs text-slate-500">Calculated using your current tax code, region, NI class, pension contributions, and student loan plans.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">

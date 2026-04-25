@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PaymentManager } from '../components/PaymentManager';
-import { Field, Money, StatCard } from '../components/common';
+import { Field, Money, StatCard, NumInput } from '../components/common';
 import { projectSavings } from '../lib/savings';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { PeriodKey } from '../lib/frequency';
@@ -22,13 +22,13 @@ export function SavingsPage() {
         <h2 className="font-bold text-lg mb-3">📈 Savings projector</h2>
         <p className="text-sm text-slate-500 mb-3">If I save £X every Y for Z years at R% AER, what will I have?</p>
         <div className="grid sm:grid-cols-5 gap-3">
-          <Field label="Contribution £"><input type="number" className="input" value={contribution} onChange={e => setContribution(parseFloat(e.target.value) || 0)} /></Field>
+          <Field label="Contribution £"><NumInput value={contribution} onChange={setContribution} /></Field>
           <Field label="Period"><select className="input" value={period} onChange={e => setPeriod(e.target.value as PeriodKey)}>
             <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option>
           </select></Field>
-          <Field label="Years"><input type="number" className="input" value={years} onChange={e => setYears(parseFloat(e.target.value) || 0)} /></Field>
-          <Field label="Interest %/yr"><input type="number" step="0.1" className="input" value={rate} onChange={e => setRate(parseFloat(e.target.value) || 0)} /></Field>
-          <Field label="Starting balance £"><input type="number" className="input" value={start} onChange={e => setStart(parseFloat(e.target.value) || 0)} /></Field>
+          <Field label="Years"><NumInput value={years} onChange={setYears} /></Field>
+          <Field label="Interest %/yr"><NumInput value={rate} onChange={setRate} step="0.1" /></Field>
+          <Field label="Starting balance £"><NumInput value={start} onChange={setStart} /></Field>
         </div>
         <div className="grid sm:grid-cols-3 gap-3 my-4">
           <StatCard label="Final balance" value={fmt(projection.finalBalance)} accent="text-emerald-500" />
