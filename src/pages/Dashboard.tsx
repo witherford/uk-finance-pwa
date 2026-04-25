@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { computeTax } from '../lib/uk-tax';
 import { annualAmount, isActive, expandOccurrences } from '../lib/frequency';
@@ -9,9 +9,18 @@ import { addMonths, format } from 'date-fns';
 import { captureElementToPng } from '../lib/screenshot';
 import { Link } from 'react-router-dom';
 
+const PRIVACY_KEY = 'dashboard-privacy';
+
 export function Dashboard() {
   const state = useFinanceStore(s => s.state);
   const ref = useRef<HTMLDivElement>(null);
+  // Default = HIDDEN for privacy. User taps eye to reveal; preference is remembered.
+  const [hidden, setHidden] = useState<boolean>(() => {
+    const saved = localStorage.getItem(PRIVACY_KEY);
+    return saved == null ? true : saved === '1';
+  });
+  useEffect(() => { localStorage.setItem(PRIVACY_KEY, hidden ? '1' : '0'); }, [hidden]);
+  const fmtMoney = (n: number) => hidden ? '••••' : new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n || 0);
 
   const tax = useMemo(() => computeTax(state.profile, state.sideIncomes), [state.profile, state.sideIncomes]);
 
@@ -62,6 +71,15 @@ export function Dashboard() {
         subtitle="Your finance dashboard at a glance"
         actions={
           <>
+            <button
+              className="btn-secondary"
+              onClick={() => setHidden(h => !h)}
+              title={hidden ? 'Show figures' : 'Hide figures'}
+              aria-pressed={!hidden}
+              aria-label={hidden ? 'Show figures' : 'Hide figures'}
+            >
+              {hidden ? '👁️ Show' : '🙈 Hide'}
+            </button>
             <button className="btn-secondary" onClick={() => ref.current && captureElementToPng(ref.current, `finance-${format(new Date(), 'yyyy-MM-dd')}.png`)}>
               📸 Snapshot
             </button>
@@ -71,10 +89,10 @@ export function Dashboard() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Take-home / mo" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(monthlyTakeHome)} hint={`Annual: £${tax.takeHome.toFixed(0)}`} accent="text-emerald-500" />
-        <StatCard label="Outgoings / mo" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(monthlyOut)} hint="Bills + debts" accent="text-rose-500" />
-        <StatCard label="Saving / mo" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(monthlySaving)} accent="text-sky-500" />
-        <StatCard label="Remaining / mo" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(remaining)} accent={remaining < 0 ? 'text-red-600' : ''} />
+        <StatCard label="Take-home / mo" value={fmtMoney(monthlyTakeHome)} hint={hidden ? '' : `Annual: ${fmtMoney(tax.takeHome)}`} accent="text-emerald-500" />
+        <StatCard label="Outgoings / mo" value={fmtMoney(monthlyOut)} hint="Bills + debts" accent="text-rose-500" />
+        <StatCard label="Saving / mo" value={fmtMoney(monthlySaving)} accent="text-sky-500" />
+        <StatCard label="Remaining / mo" value={fmtMoney(remaining)} accent={remaining < 0 && !hidden ? 'text-red-600' : ''} />
       </div>
 
       {next && (
@@ -103,7 +121,7 @@ export function Dashboard() {
                   <span className="w-2 h-8 rounded" style={{ background: u.color ?? '#94a3b8' }} />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{u.label}</div>
-                    <div className="text-xs text-slate-500">{u.meta}</div>
+                    <div className={`text-xs text-slate-500 ${hidden ? 'blur-sm select-none' : ''}`}>{u.meta}</div>
                   </div>
                   <div className="text-sm tabular-nums text-slate-600 dark:text-slate-300">{format(u.date, 'EEE d MMM')}</div>
                 </li>
@@ -118,9 +136,9 @@ export function Dashboard() {
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3 mt-5">
-        <StatCard label="Income tax / yr" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(tax.incomeTax)} />
-        <StatCard label="National Insurance / yr" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(tax.nationalInsurance)} />
-        <StatCard label="Pension / yr" value={new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(tax.pension)} hint={`+ employer £${tax.employerPension.toFixed(0)}`} />
+        <StatCard label="Income tax / yr" value={fmtMoney(tax.incomeTax)} />
+        <StatCard label="National Insurance / yr" value={fmtMoney(tax.nationalInsurance)} />
+        <StatCard label="Pension / yr" value={fmtMoney(tax.pension)} hint={hidden ? '' : `+ employer ${fmtMoney(tax.employerPension)}`} />
       </div>
     </div>
   );

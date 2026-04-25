@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { Field, PageHeader } from '../components/common';
+import { Field, PageHeader, GovLinks } from '../components/common';
 import { isAppInstalled, platform } from '../components/InstallPrompt';
+import { GOV_UK } from '../lib/gov-uk-links';
 
 export function Settings() {
   const profile = useFinanceStore(s => s.state.profile);
@@ -96,6 +97,9 @@ export function Settings() {
 
       <div className="text-xs text-slate-500 mt-6">
         Estimates here are guidance only based on UK 2025/26 reference figures. Verify against gov.uk before relying on them.
+      </div>
+      <div className="mt-3 max-w-xl">
+        <GovLinks title="Useful gov.uk references" links={GOV_UK.general} />
       </div>
     </div>
   );

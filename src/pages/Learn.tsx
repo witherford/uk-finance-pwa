@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { PageHeader } from '../components/common';
+import { PageHeader, GovLinks } from '../components/common';
+import { GOV_UK } from '../lib/gov-uk-links';
 
 interface Article {
   id: string;
   title: string;
   emoji: string;
   body: React.ReactNode;
+  refs?: keyof typeof GOV_UK | (keyof typeof GOV_UK)[];
 }
 
 const ARTICLES: Article[] = [
   {
     id: 'jargon', title: 'Jargon buster', emoji: '📖',
+    refs: ['general', 'isa', 'pension'],
     body: (
       <div className="space-y-2">
         <Def t="PAYE" d="Pay As You Earn — your employer withholds tax and NI before paying you." />
@@ -30,6 +33,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'paye', title: 'How PAYE works', emoji: '💼',
+    refs: ['paye', 'taxCodes', 'incomeTaxRates'],
     body: (
       <div className="space-y-3 text-sm">
         <p>If you're employed, your employer runs PAYE on your behalf. Each pay period they:</p>
@@ -46,6 +50,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'se', title: 'Self-employed basics', emoji: '🛠️',
+    refs: ['selfEmployed', 'ni'],
     body: (
       <div className="space-y-3 text-sm">
         <p>If you're self-employed (sole trader) you pay tax through Self Assessment.</p>
@@ -61,6 +66,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'ni', title: 'National Insurance classes', emoji: '🏥',
+    refs: 'ni',
     body: (
       <div className="space-y-2 text-sm">
         <Def t="Class 1" d="Employees — paid on earnings above the Primary Threshold." />
@@ -74,6 +80,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'taxes', title: 'Types of UK tax', emoji: '🧾',
+    refs: ['incomeTaxRates', 'ni', 'vat', 'cgt', 'iht', 'dividend', 'council', 'stampDuty'],
     body: (
       <ul className="list-disc pl-5 text-sm space-y-1">
         <li><strong>Income tax</strong> — earnings, savings interest above the personal savings allowance, dividends above the dividend allowance.</li>
@@ -89,6 +96,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'sickpay', title: 'Sick pay & SSP', emoji: '🤒',
+    refs: 'ssp',
     body: (
       <div className="space-y-2 text-sm">
         <p>Statutory Sick Pay (SSP) is paid by your employer if you're too ill to work, after a 'waiting period' of 3 days.</p>
@@ -103,6 +111,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'leave', title: 'Annual leave & entitlements', emoji: '🏖️',
+    refs: 'leave',
     body: (
       <div className="space-y-2 text-sm">
         <p>Almost all UK workers are entitled to a minimum of <strong>5.6 weeks paid holiday</strong> per year (28 days for a 5-day-week worker — bank holidays may or may not be included).</p>
@@ -117,6 +126,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'support', title: 'Support: Child Benefit, Tax-Free Childcare, Universal Credit', emoji: '👶',
+    refs: 'childcare',
     body: (
       <div className="space-y-2 text-sm">
         <ul className="list-disc pl-5 space-y-1">
@@ -130,6 +140,7 @@ const ARTICLES: Article[] = [
   },
   {
     id: 'disclaimer', title: 'Important disclaimer', emoji: '⚠️',
+    refs: 'general',
     body: (
       <p className="text-sm text-slate-600 dark:text-slate-300">
         This app provides general information for the UK based on 2025/26 reference figures and is not personal financial, tax or legal advice. Tax law changes; rates and thresholds for Scotland, Wales and the rest of the UK can differ. Always verify against gov.uk and consider speaking to a qualified adviser for your situation.
@@ -137,6 +148,12 @@ const ARTICLES: Article[] = [
     )
   }
 ];
+
+function refsFor(refs: Article['refs']): { label: string; url: string }[] {
+  if (!refs) return [];
+  const keys = Array.isArray(refs) ? refs : [refs];
+  return keys.flatMap(k => GOV_UK[k]);
+}
 
 function Def({ t, d }: { t: string; d: string }) {
   return <div className="text-sm"><span className="font-semibold">{t}:</span> <span className="text-slate-600 dark:text-slate-300">{d}</span></div>;
@@ -164,6 +181,7 @@ export function Learn() {
         <article className="card card-pad">
           <h2 className="text-xl font-bold mb-3">{article.emoji} {article.title}</h2>
           {article.body}
+          <GovLinks links={refsFor(article.refs)} />
         </article>
       </div>
     </div>

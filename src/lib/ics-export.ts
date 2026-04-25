@@ -2,6 +2,7 @@ import { createEvents, EventAttributes } from 'ics';
 import { AppState } from '../types';
 import { expandOccurrences } from './frequency';
 import { payDatesInRange } from './pay-date';
+import { bankHolidaysInRange, resolveBHRegion } from './bank-holidays';
 import { addYears, parseISO } from 'date-fns';
 
 function toIcsDate(d: Date): [number, number, number] {
@@ -60,6 +61,16 @@ export function buildIcs(state: AppState, monthsAhead = 12): string {
       duration: { days: 1 },
       description: 'Salary expected',
       categories: ['salary']
+    });
+  }
+
+  for (const b of bankHolidaysInRange(resolveBHRegion(state.profile.region), from, to)) {
+    events.push({
+      title: `🏛️ ${b.title}`,
+      start: toIcsDate(parseISO(b.date)),
+      duration: { days: 1 },
+      description: `UK bank holiday${b.notes ? ` — ${b.notes}` : ''}`,
+      categories: ['bank-holiday']
     });
   }
 

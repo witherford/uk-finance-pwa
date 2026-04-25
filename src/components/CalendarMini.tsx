@@ -3,6 +3,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns';
 import { expandOccurrences } from '../lib/frequency';
 import { payDatesInRange } from '../lib/pay-date';
+import { bankHolidaysInRange, resolveBHRegion } from '../lib/bank-holidays';
 
 export function CalendarMini() {
   const state = useFinanceStore(s => s.state);
@@ -34,6 +35,10 @@ export function CalendarMini() {
     }
     for (const d of payDatesInRange(state.profile.payDate, gridStart, gridEnd)) {
       push(d, '💷 Pay day', '#22c55e');
+    }
+    const bhRegion = resolveBHRegion(state.profile.region);
+    for (const b of bankHolidaysInRange(bhRegion, gridStart, gridEnd)) {
+      push(parseISO(b.date), `🏛️ ${b.title}`, '#f59e0b');
     }
     return map;
   }, [state, gridStart, gridEnd, cursor]);

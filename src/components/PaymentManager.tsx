@@ -52,7 +52,7 @@ export function PaymentManager({ kind, title }: { kind: PaymentKind; title: stri
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {items.length} {items.length === 1 ? 'item' : 'items'} · annual total <Money value={totalAnnual} />
+            {items.length} {items.length === 1 ? 'item' : 'items'} · <Money value={totalAnnual / 12} /> / mo · <Money value={totalAnnual} /> / yr
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -90,8 +90,8 @@ export function PaymentManager({ kind, title }: { kind: PaymentKind; title: stri
                 <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-3 h-3 rounded-full" style={{ background: cat?.color ?? '#94a3b8' }} />
                   <span className="font-semibold">{cat?.name ?? 'Uncategorised'}</span>
-                  <span className="ml-auto text-sm text-slate-500">
-                    <Money value={list.reduce((s, p) => s + annualAmount(p.amount, p.frequency), 0)} /> / yr
+                  <span className="ml-auto text-sm text-slate-500 tabular-nums whitespace-nowrap">
+                    <Money value={list.reduce((s, p) => s + annualAmount(p.amount, p.frequency), 0) / 12} /> / mo · <Money value={list.reduce((s, p) => s + annualAmount(p.amount, p.frequency), 0)} /> / yr
                   </span>
                 </div>
                 <PaymentTable items={list} categories={cats} onUpdate={updatePayment} onDelete={deletePayment} />
@@ -242,6 +242,7 @@ function PaymentTable({ items, categories, onUpdate, onDelete }: {
             <th className="table-th">Name</th>
             <th className="table-th">Amount</th>
             <th className="table-th">Frequency</th>
+            <th className="table-th">Monthly</th>
             <th className="table-th">Annual</th>
             <th className="table-th">Category</th>
             <th className="table-th">End date</th>
@@ -286,6 +287,7 @@ function PaymentRowDesktop({ p, categories, onUpdate, onDelete }: {
         </td>
         <td className="table-td tabular-nums"><Money value={p.amount} /></td>
         <td className="table-td text-slate-500">{freqShort(p.frequency)}</td>
+        <td className="table-td tabular-nums"><Money value={annualAmount(p.amount, p.frequency) / 12} /></td>
         <td className="table-td tabular-nums"><Money value={annualAmount(p.amount, p.frequency)} /></td>
         <td className="table-td">
           {cat ? <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: cat.color }} />{cat.name}</span> : <span className="text-slate-400">—</span>}
@@ -300,7 +302,7 @@ function PaymentRowDesktop({ p, categories, onUpdate, onDelete }: {
       </tr>
       {open && (
         <tr>
-          <td colSpan={7} className="bg-slate-50 dark:bg-slate-800/40 p-4">
+          <td colSpan={8} className="bg-slate-50 dark:bg-slate-800/40 p-4">
             <PaymentEditFields p={p} categories={categories} onUpdate={onUpdate} />
           </td>
         </tr>

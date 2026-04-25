@@ -51,8 +51,25 @@ export function Layout() {
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0">
-        <aside className={`no-print ${open ? 'block' : 'hidden'} lg:block w-60 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto`}>
+      <div className="flex flex-1 min-h-0 relative">
+        {/* Backdrop only on small screens when menu is open */}
+        {open && (
+          <button
+            className="lg:hidden no-print fixed inset-0 top-14 bg-slate-900/40 backdrop-blur-sm z-20"
+            aria-label="Close menu"
+            onClick={() => setOpen(false)}
+          />
+        )}
+        <aside
+          className={[
+            'no-print',
+            'border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto',
+            // Mobile/tablet: drawer overlay
+            'fixed lg:static z-30 top-14 lg:top-0 bottom-0 lg:bottom-auto left-0 w-64 lg:w-60 shrink-0',
+            'transition-transform duration-200 ease-out',
+            open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          ].join(' ')}
+        >
           <nav className="p-3 space-y-1">
             {NAV.map(item => (
               <NavLink
@@ -69,7 +86,7 @@ export function Layout() {
             ))}
           </nav>
         </aside>
-        <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 min-w-0 min-h-0 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

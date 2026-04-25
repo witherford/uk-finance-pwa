@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Field, PageHeader, StatCard, NumInput } from '../components/common';
+import { Field, PageHeader, StatCard, NumInput, GovLinks } from '../components/common';
+import { GOV_UK } from '../lib/gov-uk-links';
 import { mortgageMonthly, mortgageSchedule, stampDuty } from '../lib/uk-tools';
 import { computeTax } from '../lib/uk-tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -49,6 +50,7 @@ function StampDutyTool() {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ftb} onChange={e => setFtb(e.target.checked)} /> First-time buyer</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={extra} onChange={e => setExtra(e.target.checked)} /> Additional property (5% surcharge)</label>
         <p className="text-xs text-slate-500">England & NI bands (April 2025+). Wales (LTT) and Scotland (LBTT) differ.</p>
+        <GovLinks links={GOV_UK.stampDuty} />
       </div>
       <div className="space-y-3">
         <div className="grid sm:grid-cols-2 gap-3">
@@ -85,6 +87,7 @@ function MortgageTool() {
         <Field label="Deposit £"><NumInput value={deposit} onChange={setDeposit} /></Field>
         <Field label="Interest rate %"><NumInput value={rate} onChange={setRate} step="0.05" /></Field>
         <Field label="Term (years)"><NumInput value={years} onChange={setYears} /></Field>
+        <GovLinks links={GOV_UK.mortgage} />
       </div>
       <div className="space-y-3">
         <div className="grid sm:grid-cols-3 gap-3">
@@ -181,6 +184,7 @@ function MarriageTool() {
       <p>This currently saves the receiving partner up to <strong>£252/year</strong> in tax (20% × £1,260).</p>
       <p>Set this on the <strong>Income & Tax</strong> page using the Marriage Allowance dropdown — it then flows through your take-home calculation across the app.</p>
       <p className="text-xs text-slate-500">Apply on gov.uk — claims can usually be backdated up to 4 years.</p>
+      <GovLinks links={GOV_UK.marriageAllowance} />
     </div>
   );
 }

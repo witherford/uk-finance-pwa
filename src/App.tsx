@@ -25,10 +25,14 @@ import { DebtStrategies } from './pages/DebtStrategies';
 import { CommandPalette } from './components/CommandPalette';
 import { InstallPrompt } from './components/InstallPrompt';
 import { OfflineBadge } from './components/OfflineBadge';
+import { refreshBankHolidays } from './lib/bank-holidays';
 
 export default function App() {
   const bootstrap = useFinanceStore(s => s.bootstrap);
   useEffect(() => { bootstrap(); }, [bootstrap]);
+
+  // Try to refresh bank holiday data weekly when online (falls back to bundled).
+  useEffect(() => { refreshBankHolidays(); }, []);
 
   // Mobile UX: when a number/date/etc input gains focus, select all so the
   // leading 0 (or any prior value) gets replaced by the first keystroke.

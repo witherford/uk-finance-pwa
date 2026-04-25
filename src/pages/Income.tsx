@@ -1,6 +1,7 @@
 import { useFinanceStore } from '../store/useFinanceStore';
 import { computeTax, STUDENT_LOAN } from '../lib/uk-tax';
-import { Field, Money, PageHeader, StatCard, FrequencySelect, NumInput } from '../components/common';
+import { Field, Money, PageHeader, StatCard, FrequencySelect, NumInput, GovLinks } from '../components/common';
+import { GOV_UK } from '../lib/gov-uk-links';
 import { useMemo, useState } from 'react';
 import { Frequency, PayDateConfig, PayDateMode, StudentLoanPlan, Weekday } from '../types';
 import { PAY_DATE_OPTIONS, WEEKDAY_LABELS, nextPayDate } from '../lib/pay-date';
@@ -149,6 +150,17 @@ export function Income() {
           )}
           <StatCard label="Take-home / yr" value={fmt(tax.takeHome)} hint={`Monthly ${fmt(tax.takeHome / 12)}`} accent="text-emerald-500" />
           <StatCard label="Effective rate" value={(tax.effectiveRate * 100).toFixed(1) + '%'} />
+          <GovLinks
+            title="Verify on gov.uk"
+            links={[
+              ...GOV_UK.taxCodes,
+              ...GOV_UK.incomeTaxRates,
+              ...GOV_UK.ni,
+              ...GOV_UK.pension,
+              ...GOV_UK.studentLoans,
+              ...GOV_UK.marriageAllowance
+            ]}
+          />
         </div>
       </div>
     </div>

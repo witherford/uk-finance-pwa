@@ -45,6 +45,26 @@ export function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function GovLinks({ links, title = 'Official references' }: { links: { label: string; url: string }[]; title?: string }) {
+  if (!links || links.length === 0) return null;
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-3 text-xs">
+      <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+        <span>🇬🇧</span><span>{title}</span>
+      </div>
+      <ul className="space-y-1">
+        {links.map(l => (
+          <li key={l.url}>
+            <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline break-all">
+              {l.label} ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>

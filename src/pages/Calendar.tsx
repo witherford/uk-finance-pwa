@@ -6,6 +6,7 @@ import { expandOccurrences } from '../lib/frequency';
 import { buildIcs } from '../lib/ics-export';
 import { downloadBlob } from '../lib/import-export';
 import { payDatesInRange } from '../lib/pay-date';
+import { bankHolidaysInRange, resolveBHRegion } from '../lib/bank-holidays';
 
 type View = 'week' | 'month' | 'quarter' | 'sixmonth' | 'year';
 
@@ -47,6 +48,11 @@ export function CalendarPage() {
     // Pay days
     for (const d of payDatesInRange(state.profile.payDate, range.start, range.end)) {
       push(d, '💷 Pay day', 'salary', '#22c55e');
+    }
+    // Bank holidays
+    const bhRegion = resolveBHRegion(state.profile.region);
+    for (const b of bankHolidaysInRange(bhRegion, range.start, range.end)) {
+      push(parseISO(b.date), `🏛️ ${b.title}`, 'Bank holiday', '#f59e0b');
     }
     return map;
   }, [state, range, view]);
