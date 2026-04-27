@@ -52,6 +52,9 @@ export interface Profile {
   studentLoanPlans: StudentLoanPlan[];
   marriageAllowance: 'none' | 'transferring' | 'receiving';
   payDate: PayDateConfig;
+  // Salary modes — `salary` above is the *reference* annual salary.
+  actualSalaryMode: 'manual' | 'auto';
+  actualSalaryManual?: number;
 }
 
 export interface SideIncome {
@@ -69,6 +72,18 @@ export interface Category {
   kind: PaymentKind;
 }
 
+export interface BillHistoryEntry {
+  id: string;
+  provider: string;
+  startDate: string;
+  endDate: string;
+  paymentCadence: 'monthly' | 'annual';
+  amount: number;
+  settlementDate?: string;
+  settlementAmount?: number;
+  notes?: string;
+}
+
 export interface Payment {
   id: string;
   kind: PaymentKind;
@@ -81,6 +96,7 @@ export interface Payment {
   startDate: string; // ISO date
   endDate?: string;
   notes?: string;
+  history?: BillHistoryEntry[];
 }
 
 export interface Holiday {
@@ -126,6 +142,112 @@ export interface Budget {
   monthlyLimit: number;
 }
 
+// ---- Housing ----
+export type HousingType = 'none' | 'mortgage' | 'rent';
+export type RateType = 'fixed' | 'flexible';
+
+export interface MortgageInfo {
+  costPerMonth: number;
+  interestRatePct: number;
+  rateType: RateType;
+  provider: string;
+  accountRef: string;
+  termYears: number;
+  startDate: string;
+  endDate?: string;
+  endDateOverridden?: boolean;
+  notes?: string;
+}
+
+export interface RentInfo {
+  costPerMonth: number;
+  rateType: RateType;
+  provider: string;
+  accountRef: string;
+  termMonths: number;
+  startDate: string;
+  endDate?: string;
+  endDateOverridden?: boolean;
+  notes?: string;
+}
+
+export interface TenancyHistoryEntry {
+  id: string;
+  provider: string;
+  costPerMonth: number;
+  startDate: string;
+  endDate: string;
+  termMonths: number;
+  notes?: string;
+}
+
+export interface HousingState {
+  type: HousingType;
+  mortgage?: MortgageInfo;
+  rent?: RentInfo;
+  tenancyHistory: TenancyHistoryEntry[];
+}
+
+export type ValuationSource =
+  | 'estate-agent'
+  | 'survey'
+  | 'self'
+  | 'zoopla'
+  | 'rightmove'
+  | 'land-registry'
+  | 'other';
+
+export interface HomeValuation {
+  id: string;
+  yearMonth: string; // YYYY-MM
+  value: number;
+  source: ValuationSource;
+  notes?: string;
+}
+
+export interface HomeRecord {
+  purchasePrice: number;
+  purchaseYearMonth: string;
+  address?: string;
+  valuations: HomeValuation[];
+}
+
+// ---- Employment ----
+export type EmploymentKind = 'PAYE' | 'SE' | 'Director' | 'Contractor' | 'Other';
+
+export interface WageSlip {
+  id: string;
+  payDate: string;
+  taxCode: string;
+  grossPay: number;
+  netPay: number;
+  ytdGross: number;
+  ytdTax: number;
+  ytdNi: number;
+  incomeTax: number;
+  ni: number;
+  pension: number;
+  studentLoan?: number;
+  otherDeductions?: number;
+  notes?: string;
+}
+
+export interface Employer {
+  id: string;
+  name: string;
+  kind: EmploymentKind;
+  startDate: string;
+  endDate?: string;
+  annualRefSalary: number;
+  pensionPct?: number;
+  employerPensionPct?: number;
+  pensionScheme?: PensionScheme;
+  pensionProvider?: string;
+  pensionAccountRef?: string;
+  notes?: string;
+  wageSlips: WageSlip[];
+}
+
 export interface AppState {
   profile: Profile;
   sideIncomes: SideIncome[];
@@ -136,6 +258,9 @@ export interface AppState {
   calcMemory: CalcMemory[];
   assets: Asset[];
   budgets: Budget[];
+  housing: HousingState;
+  home?: HomeRecord;
+  employers: Employer[];
   schemaVersion: number;
 }
 
@@ -153,7 +278,8 @@ export const DEFAULT_PROFILE: Profile = {
   region: 'rUK',
   studentLoanPlans: [],
   marriageAllowance: 'none',
-  payDate: { mode: 'none' }
+  payDate: { mode: 'none' },
+  actualSalaryMode: 'manual'
 };
 
 export const DEFAULT_STATE: AppState = {
@@ -177,5 +303,7 @@ export const DEFAULT_STATE: AppState = {
   calcMemory: [],
   assets: [],
   budgets: [],
-  schemaVersion: 2
+  housing: { type: 'none', tenancyHistory: [] },
+  employers: [],
+  schemaVersion: 3
 };

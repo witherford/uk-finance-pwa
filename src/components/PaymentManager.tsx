@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { Category, Frequency, Payment, PaymentKind, SortMode } from '../types';
 import { FrequencySelect, Money, Field, Empty, NumInput } from './common';
+import { BillHistory } from './BillHistory';
 import { annualAmount, freqLabel, isActive } from '../lib/frequency';
 
 export function PaymentManager({ kind, title }: { kind: PaymentKind; title: string }) {
@@ -350,20 +351,23 @@ function PaymentEditFields({ p, categories, onUpdate }: {
   onUpdate: (id: string, patch: Partial<Payment>) => void;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <Field label="Name"><input className="input" value={p.name} onChange={e => onUpdate(p.id, { name: e.target.value })} /></Field>
-      <Field label="Category">
-        <select className="input" value={p.categoryId} onChange={e => onUpdate(p.id, { categoryId: e.target.value })}>
-          <option value="">Uncategorised</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </Field>
-      <Field label="Amount (£)"><NumInput value={p.amount} onChange={n => onUpdate(p.id, { amount: n })} step="0.01" /></Field>
-      <Field label="Frequency"><FrequencySelect value={p.frequency} onChange={f => onUpdate(p.id, { frequency: f })} /></Field>
-      <Field label="Start date"><input className="input" type="date" value={p.startDate} onChange={e => onUpdate(p.id, { startDate: e.target.value })} /></Field>
-      <Field label="End date"><input className="input" type="date" value={p.endDate ?? ''} onChange={e => onUpdate(p.id, { endDate: e.target.value || undefined })} /></Field>
-      <Field label="Provider"><input className="input" value={p.provider} onChange={e => onUpdate(p.id, { provider: e.target.value })} /></Field>
-      <Field label="Account / policy #"><input className="input" value={p.accountRef} onChange={e => onUpdate(p.id, { accountRef: e.target.value })} /></Field>
+    <div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="Name"><input className="input" value={p.name} onChange={e => onUpdate(p.id, { name: e.target.value })} /></Field>
+        <Field label="Category">
+          <select className="input" value={p.categoryId} onChange={e => onUpdate(p.id, { categoryId: e.target.value })}>
+            <option value="">Uncategorised</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Amount (£)"><NumInput value={p.amount} onChange={n => onUpdate(p.id, { amount: n })} step="0.01" /></Field>
+        <Field label="Frequency"><FrequencySelect value={p.frequency} onChange={f => onUpdate(p.id, { frequency: f })} /></Field>
+        <Field label="Start date"><input className="input" type="date" value={p.startDate} onChange={e => onUpdate(p.id, { startDate: e.target.value })} /></Field>
+        <Field label="End date"><input className="input" type="date" value={p.endDate ?? ''} onChange={e => onUpdate(p.id, { endDate: e.target.value || undefined })} /></Field>
+        <Field label="Provider"><input className="input" value={p.provider} onChange={e => onUpdate(p.id, { provider: e.target.value })} /></Field>
+        <Field label="Account / policy #"><input className="input" value={p.accountRef} onChange={e => onUpdate(p.id, { accountRef: e.target.value })} /></Field>
+      </div>
+      <BillHistory paymentId={p.id} history={p.history ?? []} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { Field, PageHeader, StatCard, Money, Empty } from '../components/common';
 import { Asset } from '../types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { HomeValuations } from '../components/HomeValuations';
 
 const TYPES: { value: Asset['type']; label: string; emoji: string }[] = [
   { value: 'cash', label: 'Cash / savings', emoji: '💵' },
@@ -18,6 +19,7 @@ const COLORS = ['#0ea5e9', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'
 export function NetWorth() {
   const assets = useFinanceStore(s => s.state.assets ?? []);
   const debts = useFinanceStore(s => s.state.payments.filter(p => p.kind === 'debt'));
+  const home = useFinanceStore(s => s.state.home);
   const add = useFinanceStore(s => s.addAsset);
   const update = useFinanceStore(s => s.updateAsset);
   const del = useFinanceStore(s => s.deleteAsset);
@@ -26,7 +28,13 @@ export function NetWorth() {
   const [type, setType] = useState<Asset['type']>('cash');
   const [value, setValue] = useState('');
 
-  const totalAssets = assets.reduce((s, a) => s + a.value, 0);
+  const homeValue = useMemo(() => {
+    if (!home) return 0;
+    if (home.valuations.length === 0) return home.purchasePrice;
+    const sorted = [...home.valuations].sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+    return sorted[0].value;
+  }, [home]);
+  const totalAssets = assets.reduce((s, a) => s + a.value, 0) + homeValue;
   // Treat current bills/debts amount as proxy: sum monthly debt payments × 12 isn't a balance; users add them as assets if they want detail.
   // We additionally let users mark debts as having an outstanding balance via the Debts page (using `amount` per period).
   // For Net Worth, debts contribute negatively if we approximate: number of remaining periods × amount.
@@ -45,6 +53,9 @@ export function NetWorth() {
 
   const byType = useMemo(() => {
     const map = new Map<string, number>();
+    if (home && homeValue > 0) {
+      map.set('Home', homeValue);
+    }
     for (const a of assets) {
       const t = TYPES.find(t => t.value === a.type)!;
       map.set(t.label, (map.get(t.label) ?? 0) + a.value);
@@ -55,6 +66,7 @@ export function NetWorth() {
   return (
     <div>
       <PageHeader title="Net worth" subtitle="Assets minus liabilities. A snapshot of where you stand." />
+      <HomeValuations />
 
       <div className="grid sm:grid-cols-3 gap-3 mb-5">
         <StatCard label="Assets" value={fmt(totalAssets)} accent="text-emerald-500" />

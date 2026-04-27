@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader, Empty } from '../components/common';
-import { backupCsv, backupJson, backupXlsx, downloadBlob, parseFile, parseRows, sampleCsv, sampleXlsx, SAMPLE_HEADERS, SAMPLE_ROWS } from '../lib/import-export';
+import { backupCsv, backupJson, backupXlsx, combinedXlsx, downloadBlob, parseFile, parseRows, sampleCsv, sampleXlsx, SAMPLE_HEADERS, SAMPLE_ROWS } from '../lib/import-export';
 import { AppState } from '../types';
 
 export function ImportExport() {
@@ -89,12 +89,16 @@ export function ImportExport() {
           <div className="font-semibold mb-2">💾 Backup</div>
           <p className="text-sm text-slate-500 mb-3">Download a copy of your data to your device. Backups stay on your device — nothing is uploaded.</p>
           <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={() => downloadBlob(backupJson(state), `finance-backup-${Date.now()}.json`)}>JSON (full)</button>
-            <button className="btn-secondary" onClick={() => downloadBlob(backupCsv(state), `finance-backup-${Date.now()}.csv`)}>CSV (payments)</button>
-            <button className="btn-secondary" onClick={() => downloadBlob(backupXlsx(state), `finance-backup-${Date.now()}.xlsx`)}>XLSX (multi-sheet)</button>
+            <button className="btn-primary" onClick={() => downloadBlob(combinedXlsx(state), `finance-backup-${Date.now()}.xlsx`)}>📦 Full backup (XLSX, all data)</button>
+            <button className="btn-secondary" onClick={() => downloadBlob(backupJson(state), `finance-backup-${Date.now()}.json`)}>JSON (loss-less)</button>
+            <button className="btn-secondary" onClick={() => downloadBlob(backupCsv(state), `payments-${Date.now()}.csv`)}>Payments CSV</button>
+            <button className="btn-secondary" onClick={() => downloadBlob(backupXlsx(state), `finance-classic-${Date.now()}.xlsx`)}>Classic XLSX</button>
           </div>
           <div className="mt-4 text-xs text-slate-500">
-            To restore, drop a JSON backup into the Import area on the left.
+            The full XLSX backup has a sheet per entity (Profile, Payments, Bill_history, Mortgage, Rent,
+            Tenancy_history, Home, Home_valuations, Holidays, Yearly_events, Categories, Side_incomes,
+            Assets, Budgets, Calc_memory, Employers, Wage_slips, Meta). To restore, drop a JSON backup
+            into the Import area on the left.
           </div>
         </div>
       </div>

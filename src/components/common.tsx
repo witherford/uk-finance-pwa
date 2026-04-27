@@ -65,7 +65,7 @@ export function GovLinks({ links, title = 'Official references' }: { links: { la
   );
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <label className="label">{label}</label>

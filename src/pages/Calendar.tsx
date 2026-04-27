@@ -10,10 +10,33 @@ import { bankHolidaysInRange, resolveBHRegion } from '../lib/bank-holidays';
 
 type View = 'week' | 'month' | 'quarter' | 'sixmonth' | 'year';
 
+const FILTER_KEY = 'calendar-filters';
+const ALL_FILTERS = ['bills', 'debts', 'savings', 'paydays', 'yearly', 'birthdays', 'holidays', 'bankholidays'] as const;
+type FilterKey = typeof ALL_FILTERS[number];
+
+function loadFilters(): Set<FilterKey> {
+  try {
+    const raw = localStorage.getItem(FILTER_KEY);
+    if (!raw) return new Set(ALL_FILTERS);
+    const arr = JSON.parse(raw) as FilterKey[];
+    if (!Array.isArray(arr)) return new Set(ALL_FILTERS);
+    return new Set(arr);
+  } catch { return new Set(ALL_FILTERS); }
+}
+
 export function CalendarPage() {
   const state = useFinanceStore(s => s.state);
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState(new Date());
+  const [filters, setFilters] = useState<Set<FilterKey>>(() => loadFilters());
+
+  const toggleFilter = (k: FilterKey) => setFilters(prev => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    localStorage.setItem(FILTER_KEY, JSON.stringify([...next]));
+    return next;
+  });
+  const has = (k: FilterKey) => filters.has(k);
 
   const range = useMemo(() => {
     const start = startOfDay(cursor);
@@ -32,12 +55,17 @@ export function CalendarPage() {
       map.get(k)!.push({ color, label, meta });
     };
     for (const p of state.payments) {
+      if (p.kind === 'bill' && !has('bills')) continue;
+      if (p.kind === 'debt' && !has('debts')) continue;
+      if (p.kind === 'saving' && !has('savings')) continue;
       const cat = state.categories.find(c => c.id === p.categoryId);
       for (const d of expandOccurrences(p, range.start, range.end)) {
         push(d, p.name, `£${p.amount.toFixed(2)} · ${cat?.name ?? p.kind}`, cat?.color);
       }
     }
     for (const e of state.yearlyEvents) {
+      if (e.type === 'birthday' && !has('birthdays')) continue;
+      if (e.type !== 'birthday' && !has('yearly')) continue;
       const ev = parseISO(e.date);
       const span = view === 'year' ? 1 : 1;
       for (let y = 0; y <= span; y++) {
@@ -45,17 +73,27 @@ export function CalendarPage() {
         if (d >= range.start && d <= range.end) push(d, e.name, e.type);
       }
     }
+    if (has('holidays')) {
+      for (const h of state.holidays) {
+        const d = parseISO(h.targetDate);
+        if (d >= range.start && d <= range.end) push(d, `✈️ ${h.name}`, h.destination, '#a855f7');
+      }
+    }
     // Pay days
-    for (const d of payDatesInRange(state.profile.payDate, range.start, range.end)) {
-      push(d, '💷 Pay day', 'salary', '#22c55e');
+    if (has('paydays')) {
+      for (const d of payDatesInRange(state.profile.payDate, range.start, range.end)) {
+        push(d, '💷 Pay day', 'salary', '#22c55e');
+      }
     }
     // Bank holidays
-    const bhRegion = resolveBHRegion(state.profile.region);
-    for (const b of bankHolidaysInRange(bhRegion, range.start, range.end)) {
-      push(parseISO(b.date), `🏛️ ${b.title}`, 'Bank holiday', '#f59e0b');
+    if (has('bankholidays')) {
+      const bhRegion = resolveBHRegion(state.profile.region);
+      for (const b of bankHolidaysInRange(bhRegion, range.start, range.end)) {
+        push(parseISO(b.date), `🏛️ ${b.title}`, 'Bank holiday', '#f59e0b');
+      }
     }
     return map;
-  }, [state, range, view]);
+  }, [state, range, view, filters]);
 
   const downloadICS = () => {
     try {
@@ -87,6 +125,25 @@ export function CalendarPage() {
           </>
         }
       />
+
+      <div className="card card-pad mb-4 flex flex-wrap gap-2 items-center">
+        <span className="text-sm font-semibold mr-2">Show:</span>
+        {([
+          { k: 'bills', label: '🧾 Bills' },
+          { k: 'debts', label: '💳 Debts' },
+          { k: 'savings', label: '🐖 Savings' },
+          { k: 'paydays', label: '💷 Pay days' },
+          { k: 'yearly', label: '🎈 Yearly events' },
+          { k: 'birthdays', label: '🎂 Birthdays' },
+          { k: 'holidays', label: '✈️ Holiday targets' },
+          { k: 'bankholidays', label: '🏛️ Bank holidays' }
+        ] as { k: FilterKey; label: string }[]).map(({ k, label }) => (
+          <label key={k} className={`px-2 py-1 rounded-full text-xs border cursor-pointer ${has(k) ? 'bg-brand-500 text-white border-brand-500' : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+            <input type="checkbox" className="sr-only" checked={has(k)} onChange={() => toggleFilter(k)} />
+            {label}
+          </label>
+        ))}
+      </div>
 
       {view === 'week' && <WeekView start={range.start} eventsByDay={eventsByDay} />}
       {view === 'month' && <MonthView cursor={cursor} eventsByDay={eventsByDay} />}

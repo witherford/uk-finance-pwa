@@ -1,5 +1,10 @@
 import { create } from 'zustand';
-import { AppState, DEFAULT_STATE, DEFAULT_PROFILE, Category, Payment, SideIncome, Holiday, YearlyEvent, CalcMemory, Profile, Asset, Budget } from '../types';
+import {
+  AppState, DEFAULT_STATE, DEFAULT_PROFILE,
+  Category, Payment, SideIncome, Holiday, YearlyEvent, CalcMemory, Profile, Asset, Budget,
+  HousingState, MortgageInfo, RentInfo, TenancyHistoryEntry, HomeRecord, HomeValuation,
+  Employer, WageSlip, BillHistoryEntry
+} from '../types';
 import { db, loadVault, saveVault, wipeVault, VaultRecord } from './db';
 import { seal, unseal } from './encryption';
 
@@ -57,8 +62,33 @@ interface Store {
   deleteBudget: (id: string) => void;
   // demo
   loadDemo: () => void;
+  // housing
+  setHousingType: (t: HousingState['type']) => void;
+  setMortgage: (patch: Partial<MortgageInfo> | undefined) => void;
+  setRent: (patch: Partial<RentInfo> | undefined) => void;
+  addTenancyHistory: (h: Omit<TenancyHistoryEntry, 'id'>) => void;
+  updateTenancyHistory: (id: string, patch: Partial<TenancyHistoryEntry>) => void;
+  deleteTenancyHistory: (id: string) => void;
+  // home
+  setHome: (h: HomeRecord | undefined) => void;
+  addValuation: (v: Omit<HomeValuation, 'id'>) => void;
+  updateValuation: (id: string, patch: Partial<HomeValuation>) => void;
+  deleteValuation: (id: string) => void;
+  // employers
+  addEmployer: (e: Omit<Employer, 'id' | 'wageSlips'> & { wageSlips?: WageSlip[] }) => void;
+  updateEmployer: (id: string, patch: Partial<Employer>) => void;
+  deleteEmployer: (id: string) => void;
+  addWageSlip: (employerId: string, s: Omit<WageSlip, 'id'>) => void;
+  updateWageSlip: (employerId: string, slipId: string, patch: Partial<WageSlip>) => void;
+  deleteWageSlip: (employerId: string, slipId: string) => void;
+  importWageSlips: (employerId: string, rows: Omit<WageSlip, 'id'>[], mode: 'merge' | 'replace') => void;
+  // bill history
+  addBillHistory: (paymentId: string, h: Omit<BillHistoryEntry, 'id'>) => void;
+  updateBillHistory: (paymentId: string, hId: string, patch: Partial<BillHistoryEntry>) => void;
+  deleteBillHistory: (paymentId: string, hId: string) => void;
   // bulk import
   importPayments: (rows: { kind: Payment['kind']; categoryName: string; name: string; provider: string; accountRef: string; amount: number; frequency: Payment['frequency']; startDate: string; endDate?: string; notes?: string }[], mode: 'merge' | 'replace', scopeKind?: Payment['kind']) => void;
+  importYearlyEvents: (rows: Omit<YearlyEvent, 'id'>[], mode: 'merge' | 'replace') => void;
   importFullState: (s: AppState) => void;
 }
 
@@ -70,18 +100,25 @@ function hydrate(parsed: Partial<AppState>): AppState {
   if (!profile.payDate || typeof profile.payDate !== 'object') profile.payDate = { mode: 'none' };
   if (!Array.isArray(profile.studentLoanPlans)) profile.studentLoanPlans = [];
   if (!profile.marriageAllowance) profile.marriageAllowance = 'none';
+  if (!profile.actualSalaryMode) profile.actualSalaryMode = 'manual';
+  const housing: HousingState = parsed.housing && typeof parsed.housing === 'object'
+    ? { type: parsed.housing.type ?? 'none', mortgage: parsed.housing.mortgage, rent: parsed.housing.rent, tenancyHistory: parsed.housing.tenancyHistory ?? [] }
+    : { type: 'none', tenancyHistory: [] };
   return {
     ...DEFAULT_STATE,
     ...parsed,
     profile,
     sideIncomes: parsed.sideIncomes ?? [],
     categories: parsed.categories ?? DEFAULT_STATE.categories,
-    payments: parsed.payments ?? [],
+    payments: (parsed.payments ?? []).map(p => ({ ...p, history: p.history ?? [] })),
     holidays: parsed.holidays ?? [],
     yearlyEvents: parsed.yearlyEvents ?? [],
     calcMemory: parsed.calcMemory ?? [],
     assets: parsed.assets ?? [],
-    budgets: parsed.budgets ?? []
+    budgets: parsed.budgets ?? [],
+    housing,
+    home: parsed.home,
+    employers: (parsed.employers ?? []).map(e => ({ ...e, wageSlips: e.wageSlips ?? [] }))
   };
 }
 
@@ -198,6 +235,74 @@ export const useFinanceStore = create<Store>((set, get) => ({
 
   addCalcMemory: (m) => get().apply(s => ({ ...s, calcMemory: [{ ...m, id: uid(), createdAt: new Date().toISOString() }, ...s.calcMemory] })),
   deleteCalcMemory: (id) => get().apply(s => ({ ...s, calcMemory: s.calcMemory.filter(m => m.id !== id) })),
+
+  // ---- Housing ----
+  setHousingType: (t) => get().apply(s => ({ ...s, housing: { ...s.housing, type: t } })),
+  setMortgage: (patch) => get().apply(s => ({ ...s, housing: { ...s.housing, mortgage: patch ? { ...(s.housing.mortgage ?? {} as MortgageInfo), ...patch } : undefined } })),
+  setRent: (patch) => get().apply(s => ({ ...s, housing: { ...s.housing, rent: patch ? { ...(s.housing.rent ?? {} as RentInfo), ...patch } : undefined } })),
+  addTenancyHistory: (h) => get().apply(s => ({ ...s, housing: { ...s.housing, tenancyHistory: [...s.housing.tenancyHistory, { ...h, id: uid() }] } })),
+  updateTenancyHistory: (id, patch) => get().apply(s => ({ ...s, housing: { ...s.housing, tenancyHistory: s.housing.tenancyHistory.map(x => x.id === id ? { ...x, ...patch } : x) } })),
+  deleteTenancyHistory: (id) => get().apply(s => ({ ...s, housing: { ...s.housing, tenancyHistory: s.housing.tenancyHistory.filter(x => x.id !== id) } })),
+
+  // ---- Home ----
+  setHome: (h) => get().apply(s => ({ ...s, home: h })),
+  addValuation: (v) => get().apply(s => s.home ? { ...s, home: { ...s.home, valuations: [...s.home.valuations, { ...v, id: uid() }] } } : s),
+  updateValuation: (id, patch) => get().apply(s => s.home ? { ...s, home: { ...s.home, valuations: s.home.valuations.map(x => x.id === id ? { ...x, ...patch } : x) } } : s),
+  deleteValuation: (id) => get().apply(s => s.home ? { ...s, home: { ...s.home, valuations: s.home.valuations.filter(x => x.id !== id) } } : s),
+
+  // ---- Employers / Wage slips ----
+  addEmployer: (e) => get().apply(s => ({ ...s, employers: [...s.employers, { ...e, wageSlips: e.wageSlips ?? [], id: uid() } as Employer] })),
+  updateEmployer: (id, patch) => get().apply(s => ({ ...s, employers: s.employers.map(e => e.id === id ? { ...e, ...patch } : e) })),
+  deleteEmployer: (id) => get().apply(s => ({ ...s, employers: s.employers.filter(e => e.id !== id) })),
+  addWageSlip: (employerId, slip) => get().apply(s => ({
+    ...s,
+    employers: s.employers.map(e => e.id === employerId ? { ...e, wageSlips: [...e.wageSlips, { ...slip, id: uid() }] } : e)
+  })),
+  updateWageSlip: (employerId, slipId, patch) => get().apply(s => ({
+    ...s,
+    employers: s.employers.map(e => e.id === employerId
+      ? { ...e, wageSlips: e.wageSlips.map(w => w.id === slipId ? { ...w, ...patch } : w) }
+      : e)
+  })),
+  deleteWageSlip: (employerId, slipId) => get().apply(s => ({
+    ...s,
+    employers: s.employers.map(e => e.id === employerId
+      ? { ...e, wageSlips: e.wageSlips.filter(w => w.id !== slipId) }
+      : e)
+  })),
+  importWageSlips: (employerId, rows, mode) => get().apply(s => ({
+    ...s,
+    employers: s.employers.map(e => e.id === employerId
+      ? { ...e, wageSlips: mode === 'replace' ? rows.map(r => ({ ...r, id: uid() })) : [...e.wageSlips, ...rows.map(r => ({ ...r, id: uid() }))] }
+      : e)
+  })),
+
+  // ---- Bill history ----
+  addBillHistory: (paymentId, h) => get().apply(s => ({
+    ...s,
+    payments: s.payments.map(p => p.id === paymentId
+      ? { ...p, history: [...(p.history ?? []), { ...h, id: uid() }] }
+      : p)
+  })),
+  updateBillHistory: (paymentId, hId, patch) => get().apply(s => ({
+    ...s,
+    payments: s.payments.map(p => p.id === paymentId
+      ? { ...p, history: (p.history ?? []).map(x => x.id === hId ? { ...x, ...patch } : x) }
+      : p)
+  })),
+  deleteBillHistory: (paymentId, hId) => get().apply(s => ({
+    ...s,
+    payments: s.payments.map(p => p.id === paymentId
+      ? { ...p, history: (p.history ?? []).filter(x => x.id !== hId) }
+      : p)
+  })),
+
+  importYearlyEvents: (rows, mode) => get().apply(s => ({
+    ...s,
+    yearlyEvents: mode === 'replace'
+      ? rows.map(r => ({ ...r, id: uid() }))
+      : [...s.yearlyEvents, ...rows.map(r => ({ ...r, id: uid() }))]
+  })),
 
   addAsset: (a) => get().apply(s => ({ ...s, assets: [...(s.assets ?? []), { ...a, id: uid() }] })),
   updateAsset: (id, patch) => get().apply(s => ({ ...s, assets: (s.assets ?? []).map(x => x.id === id ? { ...x, ...patch } : x) })),

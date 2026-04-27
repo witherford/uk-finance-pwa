@@ -6,6 +6,8 @@ import { nextPayDate, daysUntilPay } from '../lib/pay-date';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { PageHeader, StatCard } from '../components/common';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { housingMonthly, housingLabel } from '../lib/housing';
+import { effectiveSalary } from '../lib/salary';
 
 const PER_YEAR: Record<PeriodKey, number> = { daily: 365, weekly: 52, fortnightly: 26, monthly: 12, yearly: 1 };
 
@@ -13,7 +15,10 @@ export function Breakdown() {
   const state = useFinanceStore(s => s.state);
   const [period, setPeriod] = useState<PeriodKey>('monthly');
 
-  const tax = useMemo(() => computeTax(state.profile, state.sideIncomes), [state.profile, state.sideIncomes]);
+  const eff = useMemo(() => effectiveSalary(state.profile, state.employers), [state.profile, state.employers]);
+  const tax = useMemo(() => computeTax({ ...state.profile, salary: eff.value }, state.sideIncomes), [state.profile, state.sideIncomes, eff.value]);
+  const housingMo = housingMonthly(state.housing);
+  const housingKind = housingLabel(state.housing);
 
   const totals = useMemo(() => {
     const now = new Date();
@@ -29,8 +34,13 @@ export function Breakdown() {
       const k = cat?.name ?? 'Uncategorised';
       byCat.set(k, (byCat.get(k) ?? 0) + yr);
     }
+    // Add mortgage/rent under a Housing bucket
+    if (housingKind && housingMo > 0) {
+      bills += housingMo * 12;
+      byCat.set(housingKind, (byCat.get(housingKind) ?? 0) + housingMo * 12);
+    }
     return { bills, debts, savings, byCat };
-  }, [state]);
+  }, [state, housingKind, housingMo]);
 
   const div = PER_YEAR[period];
   const takeHome = tax.takeHome / div;

@@ -6,16 +6,20 @@ import { useMemo, useState } from 'react';
 import { Frequency, PayDateConfig, PayDateMode, StudentLoanPlan, Weekday } from '../types';
 import { PAY_DATE_OPTIONS, WEEKDAY_LABELS, nextPayDate } from '../lib/pay-date';
 import { format } from 'date-fns';
+import { effectiveSalary } from '../lib/salary';
+import { EmployersSection } from '../components/EmployersSection';
 
 export function Income() {
   const profile = useFinanceStore(s => s.state.profile);
   const sideIncomes = useFinanceStore(s => s.state.sideIncomes);
+  const employers = useFinanceStore(s => s.state.employers);
   const setProfile = useFinanceStore(s => s.setProfile);
   const addSideIncome = useFinanceStore(s => s.addSideIncome);
   const updateSideIncome = useFinanceStore(s => s.updateSideIncome);
   const deleteSideIncome = useFinanceStore(s => s.deleteSideIncome);
 
-  const tax = useMemo(() => computeTax(profile, sideIncomes), [profile, sideIncomes]);
+  const eff = useMemo(() => effectiveSalary(profile, employers), [profile, employers]);
+  const tax = useMemo(() => computeTax({ ...profile, salary: eff.value }, sideIncomes), [profile, sideIncomes, eff.value]);
 
   const [siName, setSiName] = useState('');
   const [siAmount, setSiAmount] = useState('');
@@ -24,7 +28,7 @@ export function Income() {
 
   return (
     <div>
-      <PageHeader title="Income & Tax" subtitle="UK 2025/26 bands. Estimates only — verify against gov.uk." />
+      <PageHeader title="Income / Taxes / Employment" subtitle="UK 2025/26 bands. Estimates only — verify against gov.uk." />
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 card card-pad space-y-3">
@@ -48,8 +52,30 @@ export function Income() {
             <Field label="Tax code">
               <input className="input" value={profile.taxCode} onChange={e => setProfile({ taxCode: e.target.value.toUpperCase() })} />
             </Field>
-            <Field label="Annual salary (gross, £)">
+            <Field label={
+              <span className="flex items-center gap-1.5">
+                Current annual reference salary (gross, £)
+                <span title="This is the headline figure your employer states for the role. On a PAYE wage slip it usually appears as 'annual salary' or 'reference salary'. It's used as the basis for tax estimates." className="cursor-help text-slate-400 hover:text-brand-500 text-base">ⓘ</span>
+              </span>
+            }>
               <NumInput value={profile.salary} onChange={n => setProfile({ salary: n })} />
+            </Field>
+            <Field label="Actual salary (used for take-home calcs)">
+              <div className="flex flex-col gap-2">
+                <select className="input" value={profile.actualSalaryMode} onChange={e => setProfile({ actualSalaryMode: e.target.value as any })}>
+                  <option value="manual">Manual</option>
+                  <option value="auto">Auto from latest wage slip</option>
+                </select>
+                {profile.actualSalaryMode === 'manual' ? (
+                  <NumInput value={profile.actualSalaryManual ?? 0} onChange={n => setProfile({ actualSalaryManual: n })} placeholder="Optional — falls back to reference" />
+                ) : (
+                  <div className="text-xs text-slate-500 px-1">
+                    {eff.source === 'auto'
+                      ? <>Auto-derived: <strong>{new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(eff.value)}</strong> · {eff.meta}</>
+                      : <>No wage slips yet — reference salary is being used.</>}
+                  </div>
+                )}
+              </div>
             </Field>
             <Field label="Pension scheme">
               <select className="input" value={profile.pensionScheme} onChange={e => setProfile({ pensionScheme: e.target.value as any })}>
@@ -138,10 +164,14 @@ export function Income() {
               </ul>
             )}
           </div>
+
+          <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800">
+            <EmployersSection />
+          </div>
         </div>
 
         <div className="space-y-3">
-          <StatCard label="Gross income / yr" value={fmt(tax.gross)} />
+          <StatCard label="Gross income / yr" value={fmt(tax.gross)} hint={eff.source !== 'reference' ? `Using ${eff.source} salary ${new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(eff.value)}` : undefined} />
           <StatCard label="Income tax / yr" value={fmt(tax.incomeTax)} accent="text-rose-500" />
           <StatCard label="National Insurance / yr" value={fmt(tax.nationalInsurance)} accent="text-rose-500" />
           <StatCard label="Pension contributions / yr" value={fmt(tax.pension)} hint={`+ employer ${fmt(tax.employerPension)}`} />

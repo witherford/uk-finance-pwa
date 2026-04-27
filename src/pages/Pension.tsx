@@ -1,21 +1,31 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { Field, PageHeader, StatCard, NumInput } from '../components/common';
 import { projectPension } from '../lib/savings';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { currentEmployer, effectiveSalary } from '../lib/salary';
 
 export function Pension() {
   const profile = useFinanceStore(s => s.state.profile);
+  const employers = useFinanceStore(s => s.state.employers);
   const setProfile = useFinanceStore(s => s.setProfile);
   const [growth, setGrowth] = useState(5);
   const [startPot, setStartPot] = useState(0);
 
+  const cur = useMemo(() => currentEmployer(employers), [employers]);
+  const eff = useMemo(() => effectiveSalary(profile, employers), [profile, employers]);
+
+  // Prefer the current employer's pension % when it's set.
+  const employeePct = (cur?.pensionPct && cur.pensionPct > 0) ? cur.pensionPct : profile.pensionPct;
+  const employerPct = (cur?.employerPensionPct && cur.employerPensionPct > 0) ? cur.employerPensionPct : profile.employerPensionPct;
+  const salaryForCalc = eff.value || profile.salary;
+
   const proj = projectPension({
     currentAge: profile.age,
     retirementAge: profile.retirementAge,
-    salary: profile.salary,
-    employeePct: profile.pensionPct,
-    employerPct: profile.employerPensionPct,
+    salary: salaryForCalc,
+    employeePct,
+    employerPct,
     annualGrowthPct: growth,
     startPot
   });

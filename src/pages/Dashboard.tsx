@@ -6,8 +6,10 @@ import { payDatesInRange, daysUntilPay, nextPayDate } from '../lib/pay-date';
 import { Money, PageHeader, StatCard } from '../components/common';
 import { CalendarMini } from '../components/CalendarMini';
 import { addMonths, format } from 'date-fns';
-import { captureElementToPng } from '../lib/screenshot';
 import { Link } from 'react-router-dom';
+import { housingMonthly, housingLabel } from '../lib/housing';
+import { effectiveSalary } from '../lib/salary';
+import { SnapshotMenu } from '../components/SnapshotMenu';
 
 const PRIVACY_KEY = 'dashboard-privacy';
 
@@ -22,13 +24,17 @@ export function Dashboard() {
   useEffect(() => { localStorage.setItem(PRIVACY_KEY, hidden ? '1' : '0'); }, [hidden]);
   const fmtMoney = (n: number) => hidden ? '••••' : new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n || 0);
 
-  const tax = useMemo(() => computeTax(state.profile, state.sideIncomes), [state.profile, state.sideIncomes]);
+  const eff = useMemo(() => effectiveSalary(state.profile, state.employers), [state.profile, state.employers]);
+  const tax = useMemo(() => computeTax({ ...state.profile, salary: eff.value }, state.sideIncomes), [state.profile, state.sideIncomes, eff.value]);
 
+  const monthlyHousing = useMemo(() => housingMonthly(state.housing), [state.housing]);
+  const housingKind = housingLabel(state.housing);
   const monthlyOut = useMemo(() => {
     const now = new Date();
-    return state.payments.filter(p => isActive(p, now) && p.kind !== 'saving')
+    const billsAndDebts = state.payments.filter(p => isActive(p, now) && p.kind !== 'saving')
       .reduce((s, p) => s + annualAmount(p.amount, p.frequency) / 12, 0);
-  }, [state.payments]);
+    return billsAndDebts + monthlyHousing;
+  }, [state.payments, monthlyHousing]);
 
   const monthlySaving = useMemo(() => {
     const now = new Date();
@@ -80,9 +86,7 @@ export function Dashboard() {
             >
               {hidden ? '👁️ Show' : '🙈 Hide'}
             </button>
-            <button className="btn-secondary" onClick={() => ref.current && captureElementToPng(ref.current, `finance-${format(new Date(), 'yyyy-MM-dd')}.png`)}>
-              📸 Snapshot
-            </button>
+            <SnapshotMenu targetEl={ref} />
             <Link to="/breakdown" className="btn-primary">Breakdown</Link>
           </>
         }
@@ -94,6 +98,20 @@ export function Dashboard() {
         <StatCard label="Saving / mo" value={fmtMoney(monthlySaving)} accent="text-sky-500" />
         <StatCard label="Remaining / mo" value={fmtMoney(remaining)} accent={remaining < 0 && !hidden ? 'text-red-600' : ''} />
       </div>
+
+      {housingKind && monthlyHousing > 0 && (
+        <div className="card card-pad mb-5 flex items-center gap-4">
+          <div className="text-3xl">🏡</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold">{housingKind}</div>
+            <div className="text-sm text-slate-500">
+              {state.housing.type === 'mortgage' ? state.housing.mortgage?.provider : state.housing.rent?.provider}
+              {' · '}{fmtMoney(monthlyHousing)} / mo
+            </div>
+          </div>
+          <Link to="/bills" className="btn-ghost text-sm">Manage</Link>
+        </div>
+      )}
 
       {next && (
         <div className="card card-pad mb-5 flex items-center gap-4">
