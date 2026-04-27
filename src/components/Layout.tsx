@@ -1,23 +1,25 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { APP_VERSION } from '../version';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '🏠', end: true },
-  { to: '/income', label: 'Income & Tax', icon: '💷' },
+  { to: '/income', label: 'Income/Tax/Employment', icon: '💷' },
   { to: '/bills', label: 'Bills', icon: '🧾' },
   { to: '/budgets', label: 'Budgets', icon: '🎯' },
+  { to: '/spending', label: 'Spending', icon: '🛒' },
   { to: '/debts', label: 'Debts', icon: '💳' },
-  { to: '/debt-strategies', label: 'Debt strategies', icon: '🪜' },
   { to: '/savings', label: 'Savings', icon: '🐖' },
   { to: '/net-worth', label: 'Net worth', icon: '🏦' },
   { to: '/holidays', label: 'Holidays', icon: '✈️' },
   { to: '/yearly', label: 'Yearly events', icon: '🎈' },
   { to: '/pension', label: 'Pension', icon: '👴' },
-  { to: '/breakdown', label: 'Breakdown', icon: '📊' },
+  { to: '/breakdown', label: 'Insights & statistics', icon: '📊' },
   { to: '/calendar', label: 'Calendar', icon: '📅' },
   { to: '/calculator', label: 'Calculator', icon: '🧮' },
   { to: '/tools', label: 'UK Tools', icon: '🧰' },
+  { to: '/providers', label: 'Your providers', icon: '📇' },
   { to: '/import', label: 'Import / Backup', icon: '📁' },
   { to: '/learn', label: 'Learning centre', icon: '📚' },
   { to: '/settings', label: 'Settings', icon: '⚙️' }
@@ -39,6 +41,7 @@ export function Layout() {
           <div className="flex items-center gap-2 font-bold">
             <span className="w-7 h-7 rounded-md bg-brand-500 text-white grid place-items-center text-sm">£</span>
             UK Finance
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">{APP_VERSION}</span>
           </div>
           {firstName && <div className="ml-auto text-sm text-slate-500">Hi, {firstName} 👋</div>}
           <button
@@ -85,6 +88,9 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
+          <div className="px-4 py-3 text-[10px] text-slate-400 border-t border-slate-200 dark:border-slate-800">
+            UK Finance · {APP_VERSION}
+          </div>
         </aside>
         <main className="flex-1 min-w-0 min-h-0 overflow-y-auto p-4 sm:p-6">
           <Outlet />

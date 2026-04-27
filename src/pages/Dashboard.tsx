@@ -8,6 +8,7 @@ import { CalendarMini } from '../components/CalendarMini';
 import { addMonths, format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { housingMonthly, housingLabel } from '../lib/housing';
+import { councilTaxMonthlyAveraged } from '../lib/council-tax';
 import { effectiveSalary } from '../lib/salary';
 import { SnapshotMenu } from '../components/SnapshotMenu';
 
@@ -29,12 +30,30 @@ export function Dashboard() {
 
   const monthlyHousing = useMemo(() => housingMonthly(state.housing), [state.housing]);
   const housingKind = housingLabel(state.housing);
+  const monthlyCouncilTax = useMemo(() => councilTaxMonthlyAveraged(state.councilTax), [state.councilTax]);
+  const monthlyOverpayments = useMemo(() => state.payments.filter(p => p.kind === 'debt').reduce((s, p) => s + (p.overpayment ?? 0), 0), [state.payments]);
+
+  const totalDebtBalance = useMemo(() => state.payments
+    .filter(p => p.kind === 'debt' && p.balance && p.balance > 0)
+    .reduce((s, p) => s + (p.balance ?? 0), 0), [state.payments]);
+
+  // This-month spending
+  const monthlySpending = useMemo(() => {
+    const now = new Date();
+    const ym = now.getFullYear() * 100 + now.getMonth();
+    return state.spending.filter(s => {
+      const d = new Date(s.date);
+      return d.getFullYear() * 100 + d.getMonth() === ym;
+    }).reduce((sum, s) => sum + (s.amount || 0), 0);
+  }, [state.spending]);
+  const spendingBudget = state.spendingMonthlyBudget ?? 0;
+
   const monthlyOut = useMemo(() => {
     const now = new Date();
     const billsAndDebts = state.payments.filter(p => isActive(p, now) && p.kind !== 'saving')
       .reduce((s, p) => s + annualAmount(p.amount, p.frequency) / 12, 0);
-    return billsAndDebts + monthlyHousing;
-  }, [state.payments, monthlyHousing]);
+    return billsAndDebts + monthlyHousing + monthlyCouncilTax + monthlyOverpayments;
+  }, [state.payments, monthlyHousing, monthlyCouncilTax, monthlyOverpayments]);
 
   const monthlySaving = useMemo(() => {
     const now = new Date();
@@ -43,7 +62,7 @@ export function Dashboard() {
   }, [state.payments]);
 
   const monthlyTakeHome = tax.takeHome / 12;
-  const remaining = monthlyTakeHome - monthlyOut - monthlySaving;
+  const remaining = monthlyTakeHome - monthlyOut - monthlySaving - monthlySpending;
 
   const upcoming = useMemo(() => {
     const from = new Date();
@@ -92,11 +111,21 @@ export function Dashboard() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         <StatCard label="Take-home / mo" value={fmtMoney(monthlyTakeHome)} hint={hidden ? '' : `Annual: ${fmtMoney(tax.takeHome)}`} accent="text-emerald-500" />
-        <StatCard label="Outgoings / mo" value={fmtMoney(monthlyOut)} hint="Bills + debts" accent="text-rose-500" />
+        <StatCard label="Outgoings / mo" value={fmtMoney(monthlyOut)} hint="Bills + debts + housing + overpayments" accent="text-rose-500" />
         <StatCard label="Saving / mo" value={fmtMoney(monthlySaving)} accent="text-sky-500" />
-        <StatCard label="Remaining / mo" value={fmtMoney(remaining)} accent={remaining < 0 && !hidden ? 'text-red-600' : ''} />
+        <StatCard label="Remaining / mo" value={fmtMoney(remaining)} accent={remaining < 0 && !hidden ? 'text-red-600' : ''} hint={hidden ? '' : monthlySpending > 0 ? `After ${fmtMoney(monthlySpending)} spending` : undefined} />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+        <StatCard label="Total debt" value={fmtMoney(totalDebtBalance)} hint={hidden ? '' : monthlyOverpayments > 0 ? `Overpaying ${fmtMoney(monthlyOverpayments)}/mo` : undefined} accent="text-rose-500" />
+        <StatCard
+          label="This month's spending"
+          value={fmtMoney(monthlySpending)}
+          hint={hidden ? '' : spendingBudget > 0 ? `${Math.min(999, Math.round((monthlySpending / spendingBudget) * 100))}% of ${fmtMoney(spendingBudget)} budget` : 'No budget set'}
+          accent={spendingBudget > 0 && monthlySpending > spendingBudget && !hidden ? 'text-rose-500' : 'text-amber-500'}
+        />
+        <StatCard label="Council Tax / mo" value={fmtMoney(monthlyCouncilTax)} hint={hidden ? '' : state.councilTax?.council || 'Not set'} />
       </div>
 
       {housingKind && monthlyHousing > 0 && (

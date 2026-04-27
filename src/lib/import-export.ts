@@ -1,6 +1,6 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { AppState, Frequency, Payment, PaymentKind, WageSlip, Employer, YearlyEvent, YearlyEventType } from '../types';
+import { AppState, Frequency, Payment, PaymentKind, WageSlip, Employer, YearlyEvent, YearlyEventType, CouncilTaxHistoryEntry, CouncilBand, CouncilPlan, SpendingEntry } from '../types';
 
 export const SAMPLE_HEADERS = [
   'Kind', 'Category', 'Name', 'Provider', 'AccountRef',
@@ -76,16 +76,11 @@ export function parseDebtRows(rows: Record<string, string>[]): ParsedDebtRow[] {
     const endDate = endDateRaw ? normaliseDate(endDateRaw) : null;
     if (endDateRaw && endDate === null) return { ok: false, reason: `Row ${i + 2}: invalid EndDate "${r.EndDate}" (use YYYY-MM-DD)` };
 
-    // Optional debt-specific extras roll into Notes.
-    const extras: string[] = [];
+    // Optional debt-specific fields map directly onto Payment now (was rolled into Notes).
     const bal = parseFloat(String(r.Balance ?? ''));
     const apr = parseFloat(String(r.APR ?? ''));
     const minP = parseFloat(String(r.MinPayment ?? ''));
-    if (isFinite(bal) && bal > 0) extras.push(`Balance £${bal.toLocaleString('en-GB')}`);
-    if (isFinite(apr) && apr > 0) extras.push(`APR ${apr}%`);
-    if (isFinite(minP) && minP > 0) extras.push(`Min £${minP.toFixed(2)}`);
-    const userNotes = String(r.Notes ?? '').trim();
-    const notes = [extras.join(' · '), userNotes].filter(Boolean).join(' — ') || undefined;
+    const userNotes = String(r.Notes ?? '').trim() || undefined;
 
     return {
       ok: true,
@@ -100,7 +95,10 @@ export function parseDebtRows(rows: Record<string, string>[]): ParsedDebtRow[] {
         frequency: freq,
         startDate,
         endDate: endDate || undefined,
-        notes
+        notes: userNotes,
+        balance: isFinite(bal) && bal > 0 ? bal : undefined,
+        apr: isFinite(apr) && apr > 0 ? apr : undefined,
+        minPayment: isFinite(minP) && minP > 0 ? minP : undefined
       }
     };
   });
@@ -109,7 +107,7 @@ export function parseDebtRows(rows: Record<string, string>[]): ParsedDebtRow[] {
 export function backupDebtsCsv(state: AppState): Blob {
   const rows = state.payments.filter(p => p.kind === 'debt').map(p => {
     const cat = state.categories.find(c => c.id === p.categoryId)?.name ?? '';
-    return [p.name, cat, p.provider, p.accountRef, p.amount, p.frequency, p.startDate, p.endDate ?? '', '', '', '', p.notes ?? ''];
+    return [p.name, cat, p.provider, p.accountRef, p.amount, p.frequency, p.startDate, p.endDate ?? '', p.balance ?? '', p.apr ?? '', p.minPayment ?? '', p.notes ?? ''];
   });
   return new Blob([Papa.unparse([DEBT_HEADERS, ...rows])], { type: 'text/csv' });
 }
@@ -117,7 +115,7 @@ export function backupDebtsCsv(state: AppState): Blob {
 export function backupDebtsXlsx(state: AppState): Blob {
   const rows = state.payments.filter(p => p.kind === 'debt').map(p => {
     const cat = state.categories.find(c => c.id === p.categoryId)?.name ?? '';
-    return { Name: p.name, Category: cat, Provider: p.provider, AccountRef: p.accountRef, Amount: p.amount, Frequency: p.frequency, StartDate: p.startDate, EndDate: p.endDate ?? '', Balance: '', APR: '', MinPayment: '', Notes: p.notes ?? '' };
+    return { Name: p.name, Category: cat, Provider: p.provider, AccountRef: p.accountRef, Amount: p.amount, Frequency: p.frequency, StartDate: p.startDate, EndDate: p.endDate ?? '', Balance: p.balance ?? '', APR: p.apr ?? '', MinPayment: p.minPayment ?? '', Notes: p.notes ?? '' };
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows, { header: DEBT_HEADERS as any }), 'Debts');
@@ -395,6 +393,125 @@ export function backupYearlyEventsXlsx(state: AppState): Blob {
 }
 
 // =====================================================================
+// Council Tax history (CSV / XLSX)
+// =====================================================================
+export const CT_HEADERS = ['Council', 'Band', 'Plan', 'MonthlyCost', 'StartDate', 'EndDate', 'Notes'];
+export const CT_SAMPLE_ROWS: string[][] = [
+  ['Bristol City Council', 'D', '10-monthly', '180.50', '2023-04-01', '2024-03-31', '25% single occupancy'],
+  ['Bristol City Council', 'D', '10-monthly', '195.20', '2024-04-01', '2025-03-31', ''],
+  ['Bristol City Council', 'D', '12-monthly', '170.00', '2025-04-01', '2026-03-31', 'Switched to 12 instalments']
+];
+const VALID_BANDS: CouncilBand[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+const VALID_PLANS: CouncilPlan[] = ['10-monthly', '12-monthly'];
+
+export function sampleCouncilTaxCsv(): string { return Papa.unparse([CT_HEADERS, ...CT_SAMPLE_ROWS]); }
+export function sampleCouncilTaxXlsx(): Blob {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([CT_HEADERS, ...CT_SAMPLE_ROWS]), 'CouncilTax');
+  return new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+export interface ParsedCouncilTaxRow {
+  ok: boolean;
+  reason?: string;
+  entry?: Omit<CouncilTaxHistoryEntry, 'id'>;
+}
+
+export function parseCouncilTaxRows(rows: Record<string, string>[]): ParsedCouncilTaxRow[] {
+  return rows.map((r, i) => {
+    const council = String(r.Council ?? '').trim();
+    if (!council) return { ok: false, reason: `Row ${i + 2}: missing Council` };
+    const band = String(r.Band ?? '').toUpperCase().trim() as CouncilBand;
+    if (!VALID_BANDS.includes(band)) return { ok: false, reason: `Row ${i + 2}: invalid Band "${r.Band}" (use A–I)` };
+    const plan = String(r.Plan ?? '12-monthly').toLowerCase().trim() as CouncilPlan;
+    if (!VALID_PLANS.includes(plan)) return { ok: false, reason: `Row ${i + 2}: invalid Plan "${r.Plan}" (use 10-monthly or 12-monthly)` };
+    const monthlyCost = parseFloat(String(r.MonthlyCost ?? '0'));
+    if (!isFinite(monthlyCost) || monthlyCost < 0) return { ok: false, reason: `Row ${i + 2}: invalid MonthlyCost` };
+    const startDate = normaliseDate(r.StartDate);
+    if (!startDate) return { ok: false, reason: `Row ${i + 2}: invalid StartDate` };
+    const endDate = normaliseDate(r.EndDate);
+    if (!endDate) return { ok: false, reason: `Row ${i + 2}: invalid EndDate` };
+    return {
+      ok: true,
+      entry: { council, band, plan, monthlyCost, startDate, endDate, notes: String(r.Notes ?? '').trim() || undefined }
+    };
+  });
+}
+
+export function backupCouncilTaxHistoryCsv(state: AppState): Blob {
+  const rows = state.councilTaxHistory.map(h => [h.council, h.band, h.plan, h.monthlyCost, h.startDate, h.endDate, h.notes ?? '']);
+  return new Blob([Papa.unparse([CT_HEADERS, ...rows])], { type: 'text/csv' });
+}
+
+export function backupCouncilTaxHistoryXlsx(state: AppState): Blob {
+  const rows = state.councilTaxHistory.map(h => ({ Council: h.council, Band: h.band, Plan: h.plan, MonthlyCost: h.monthlyCost, StartDate: h.startDate, EndDate: h.endDate, Notes: h.notes ?? '' }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ Council: '' }], { header: CT_HEADERS as any }), 'CouncilTax');
+  return new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+// =====================================================================
+// Spending (CSV / XLSX) — attachments excluded; lossless via JSON / .ukf only.
+// =====================================================================
+export const SPENDING_HEADERS = ['Date', 'Name', 'Amount', 'Category', 'Retailer', 'Description', 'ReferenceUrl', 'WarrantyUntil', 'WarrantyProvider'];
+export const SPENDING_SAMPLE_ROWS: string[][] = [
+  ['2025-04-04', 'Bluetooth headphones', '79.99', 'Electronics', 'Currys', 'Replacement pair', 'https://currys.co.uk/...', '2027-04-04', 'Currys 2yr warranty'],
+  ['2025-04-08', 'Weekly groceries',     '92.45', 'Groceries',   'Tesco',  '',                'https://tesco.com',      '', ''],
+  ['2025-04-12', 'Birthday gift',        '40.00', 'Gifts',       'Amazon', 'Mum birthday',    '',                       '', '']
+];
+
+export function sampleSpendingCsv(): string { return Papa.unparse([SPENDING_HEADERS, ...SPENDING_SAMPLE_ROWS]); }
+export function sampleSpendingXlsx(): Blob {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([SPENDING_HEADERS, ...SPENDING_SAMPLE_ROWS]), 'Spending');
+  return new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+export interface ParsedSpendingRow {
+  ok: boolean;
+  reason?: string;
+  entry?: Omit<SpendingEntry, 'id'>;
+}
+
+export function parseSpendingRows(rows: Record<string, string>[]): ParsedSpendingRow[] {
+  return rows.map((r, i) => {
+    const name = String(r.Name ?? '').trim();
+    if (!name) return { ok: false, reason: `Row ${i + 2}: missing Name` };
+    const date = normaliseDate(r.Date);
+    if (!date) return { ok: false, reason: `Row ${i + 2}: invalid Date` };
+    const amount = parseFloat(String(r.Amount ?? '0'));
+    if (!isFinite(amount) || amount < 0) return { ok: false, reason: `Row ${i + 2}: invalid Amount` };
+    const category = String(r.Category ?? '').trim() || 'Uncategorised';
+    const warrantyUntil = r.WarrantyUntil ? normaliseDate(r.WarrantyUntil) ?? undefined : undefined;
+    const warrantyProvider = String(r.WarrantyProvider ?? '').trim() || undefined;
+    const warranty = (warrantyUntil || warrantyProvider) ? { until: warrantyUntil, provider: warrantyProvider } : undefined;
+    return {
+      ok: true,
+      entry: {
+        name, amount, date, category,
+        retailer: String(r.Retailer ?? '').trim() || undefined,
+        description: String(r.Description ?? '').trim() || undefined,
+        referenceUrl: String(r.ReferenceUrl ?? '').trim() || undefined,
+        warranty,
+        attachments: []
+      }
+    };
+  });
+}
+
+export function backupSpendingCsv(state: AppState): Blob {
+  const rows = state.spending.map(s => [s.date, s.name, s.amount, s.category, s.retailer ?? '', s.description ?? '', s.referenceUrl ?? '', s.warranty?.until ?? '', s.warranty?.provider ?? '']);
+  return new Blob([Papa.unparse([SPENDING_HEADERS, ...rows])], { type: 'text/csv' });
+}
+
+export function backupSpendingXlsx(state: AppState): Blob {
+  const rows = state.spending.map(s => ({ Date: s.date, Name: s.name, Amount: s.amount, Category: s.category, Retailer: s.retailer ?? '', Description: s.description ?? '', ReferenceUrl: s.referenceUrl ?? '', WarrantyUntil: s.warranty?.until ?? '', WarrantyProvider: s.warranty?.provider ?? '' }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ Name: '' }], { header: SPENDING_HEADERS as any }), 'Spending');
+  return new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+// =====================================================================
 // Combined single-file backup (.xlsx with sheet per entity)
 // =====================================================================
 export function combinedXlsx(state: AppState): Blob {
@@ -480,6 +597,31 @@ export function combinedXlsx(state: AppState): Blob {
       for (const s of e.wageSlips) allSlips.push({ EmployerId: e.id, EmployerName: e.name, ...s });
     }
     if (allSlips.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allSlips), 'Wage_slips');
+  }
+
+  // Council tax
+  if (state.councilTax) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([state.councilTax]), 'Council_tax');
+  if (state.councilTaxHistory.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.councilTaxHistory), 'Council_tax_history');
+
+  // Spending — attachments stripped to filename + size for the human-readable XLSX.
+  if (state.spending.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.spending.map(s => ({
+      Id: s.id, Date: s.date, Name: s.name, Amount: s.amount, Category: s.category,
+      Retailer: s.retailer ?? '', Description: s.description ?? '', ReferenceUrl: s.referenceUrl ?? '',
+      WarrantyUntil: s.warranty?.until ?? '', WarrantyProvider: s.warranty?.provider ?? '',
+      Attachments: (s.attachments ?? []).map(a => `${a.filename} (${Math.round((a.bytes || 0) / 1024)} KB)`).join('; ')
+    }))), 'Spending');
+  }
+
+  // Spending budget (single-row sheet for quick scanning)
+  if (state.spendingMonthlyBudget != null) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ MonthlyBudget: state.spendingMonthlyBudget }]), 'Spending_budget');
+  }
+
+  // Provider overrides
+  const overrides = Object.entries(state.providerOverrides ?? {});
+  if (overrides.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overrides.map(([key, ov]) => ({ Key: key, ...ov }))), 'Provider_overrides');
   }
 
   // Meta

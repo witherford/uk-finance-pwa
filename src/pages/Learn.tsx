@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader, GovLinks } from '../components/common';
 import { GOV_UK } from '../lib/gov-uk-links';
+import { listDirectory, UKProvider, UKProviderCategory } from '../lib/providers';
+import { ProviderLogo } from '../components/ProviderLogo';
 
 interface Article {
   id: string;
@@ -139,6 +141,10 @@ const ARTICLES: Article[] = [
     )
   },
   {
+    id: 'companies', title: 'UK companies & contacts', emoji: '📇',
+    body: <UKCompaniesDirectory />
+  },
+  {
     id: 'disclaimer', title: 'Important disclaimer', emoji: '⚠️',
     refs: 'general',
     body: (
@@ -184,6 +190,63 @@ export function Learn() {
           <GovLinks links={refsFor(article.refs)} />
         </article>
       </div>
+    </div>
+  );
+}
+
+function UKCompaniesDirectory() {
+  const dir = useMemo(() => listDirectory(), []);
+  const [search, setSearch] = useState('');
+  const [cat, setCat] = useState<UKProviderCategory | 'all'>('all');
+
+  const cats: { v: UKProviderCategory | 'all'; label: string }[] = [
+    { v: 'all', label: 'All' },
+    { v: 'bank', label: '🏦 Banks' },
+    { v: 'energy', label: '⚡ Energy' },
+    { v: 'utility-water', label: '💧 Water' },
+    { v: 'broadband', label: '🌐 Broadband' },
+    { v: 'mobile', label: '📱 Mobile' },
+    { v: 'insurance', label: '🛡️ Insurance' },
+    { v: 'credit-card', label: '💳 Credit cards' },
+    { v: 'comparison', label: '🔍 Comparison' },
+    { v: 'subscription', label: '📺 Subscriptions' },
+    { v: 'council', label: '🏛️ Councils' },
+    { v: 'other', label: '📦 Other' }
+  ];
+
+  const filtered = dir.filter((p: UKProvider) => {
+    if (cat !== 'all' && p.category !== cat) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return p.name.toLowerCase().includes(q) || (p.aliases ?? []).some(a => a.toLowerCase().includes(q));
+  });
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-slate-600 dark:text-slate-300">A bird's-eye list of major UK financial companies, utilities, comparison sites and councils — with website, phone, and email where available. Hand-curated; submit suggestions via GitHub.</p>
+      <div className="flex flex-wrap gap-2 items-center">
+        <input className="input flex-1 min-w-[220px]" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="input !w-auto" value={cat} onChange={e => setCat(e.target.value as any)}>
+          {cats.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
+        </select>
+      </div>
+      <div className="text-xs text-slate-500">{filtered.length} of {dir.length} entries</div>
+      <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg max-h-[60vh] overflow-y-auto">
+        {filtered.map((p: UKProvider) => (
+          <li key={p.name} className="px-3 py-2 flex items-center gap-3">
+            <ProviderLogo name={p.name} size={28} />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate">{p.name}</div>
+              <div className="text-xs text-slate-500 truncate">{p.category} · {p.domain}</div>
+            </div>
+            <div className="flex flex-wrap gap-1 text-xs">
+              {p.domain && <a className="btn-ghost !py-1 !px-2 text-slate-600 dark:text-slate-300" href={`https://${p.domain}`} target="_blank" rel="noopener noreferrer">↗</a>}
+              {p.phone && <a className="btn-ghost !py-1 !px-2 text-slate-600 dark:text-slate-300" href={`tel:${p.phone.replace(/\s+/g, '')}`}>📞</a>}
+              {p.email && <a className="btn-ghost !py-1 !px-2 text-slate-600 dark:text-slate-300" href={`mailto:${p.email}`}>✉</a>}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -97,6 +97,11 @@ export interface Payment {
   endDate?: string;
   notes?: string;
   history?: BillHistoryEntry[];
+  // Debt-only optional fields (used for total-debt, payoff strategies, overpayments).
+  balance?: number;
+  apr?: number;
+  minPayment?: number;
+  overpayment?: number; // extra £/month above the regular payment
 }
 
 export interface Holiday {
@@ -212,6 +217,72 @@ export interface HomeRecord {
   valuations: HomeValuation[];
 }
 
+// ---- Council Tax ----
+export type CouncilBand = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I';
+export type CouncilPlan = '12-monthly' | '10-monthly';
+
+export interface CouncilTaxInfo {
+  council: string;
+  band: CouncilBand;
+  plan: CouncilPlan;
+  accountRef: string;
+  monthlyCost: number;
+  costIncludesDiscount: boolean;
+  singleOccupancyDiscount: boolean;
+  discountPct: number;
+  yearStartMonth: number; // 1..12, default 4 (April)
+  notes?: string;
+}
+
+export interface CouncilTaxHistoryEntry {
+  id: string;
+  council: string;
+  band: CouncilBand;
+  plan: CouncilPlan;
+  monthlyCost: number;
+  startDate: string;
+  endDate: string;
+  notes?: string;
+}
+
+// ---- Spending ----
+export interface SpendingAttachment {
+  id: string;
+  filename: string;
+  mime: string;
+  data: string; // base64 data URL
+  bytes: number;
+}
+
+export interface SpendingWarranty {
+  until?: string;
+  provider?: string;
+  notes?: string;
+}
+
+export interface SpendingEntry {
+  id: string;
+  name: string;
+  amount: number;
+  date: string;
+  category: string;
+  description?: string;
+  retailer?: string;
+  referenceUrl?: string;
+  warranty?: SpendingWarranty;
+  attachments: SpendingAttachment[];
+}
+
+// ---- Provider overrides ----
+export interface ProviderOverride {
+  // Keyed in the AppState.providerOverrides map by normalised lowercased name.
+  name: string;
+  domain?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}
+
 // ---- Employment ----
 export type EmploymentKind = 'PAYE' | 'SE' | 'Director' | 'Contractor' | 'Other';
 
@@ -261,6 +332,11 @@ export interface AppState {
   housing: HousingState;
   home?: HomeRecord;
   employers: Employer[];
+  councilTax?: CouncilTaxInfo;
+  councilTaxHistory: CouncilTaxHistoryEntry[];
+  spending: SpendingEntry[];
+  spendingMonthlyBudget?: number;
+  providerOverrides: Record<string, ProviderOverride>;
   schemaVersion: number;
 }
 
@@ -305,5 +381,8 @@ export const DEFAULT_STATE: AppState = {
   budgets: [],
   housing: { type: 'none', tenancyHistory: [] },
   employers: [],
-  schemaVersion: 3
+  councilTaxHistory: [],
+  spending: [],
+  providerOverrides: {},
+  schemaVersion: 4
 };

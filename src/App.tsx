@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { useFinanceStore } from './store/useFinanceStore';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { Layout } from './components/Layout';
@@ -21,7 +21,8 @@ import { Settings } from './pages/Settings';
 import { NetWorth } from './pages/NetWorth';
 import { Budgets } from './pages/Budgets';
 import { Tools } from './pages/Tools';
-import { DebtStrategies } from './pages/DebtStrategies';
+import { Spending } from './pages/Spending';
+import { Providers } from './pages/Providers';
 import { CommandPalette } from './components/CommandPalette';
 import { InstallPrompt } from './components/InstallPrompt';
 import { OfflineBadge } from './components/OfflineBadge';
@@ -60,7 +61,9 @@ export default function App() {
           <Route path="bills" element={<BillsPage />} />
           <Route path="budgets" element={<Budgets />} />
           <Route path="debts" element={<DebtsPage />} />
-          <Route path="debt-strategies" element={<DebtStrategies />} />
+          <Route path="debt-strategies" element={<Navigate to="/debts" replace />} />
+          <Route path="spending" element={<Spending />} />
+          <Route path="providers" element={<Providers />} />
           <Route path="savings" element={<SavingsPage />} />
           <Route path="net-worth" element={<NetWorth />} />
           <Route path="holidays" element={<Holidays />} />

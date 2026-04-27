@@ -3,7 +3,9 @@ import {
   AppState, DEFAULT_STATE, DEFAULT_PROFILE,
   Category, Payment, SideIncome, Holiday, YearlyEvent, CalcMemory, Profile, Asset, Budget,
   HousingState, MortgageInfo, RentInfo, TenancyHistoryEntry, HomeRecord, HomeValuation,
-  Employer, WageSlip, BillHistoryEntry
+  Employer, WageSlip, BillHistoryEntry,
+  CouncilTaxInfo, CouncilTaxHistoryEntry,
+  SpendingEntry, ProviderOverride
 } from '../types';
 import { db, loadVault, saveVault, wipeVault, VaultRecord } from './db';
 import { seal, unseal } from './encryption';
@@ -87,9 +89,26 @@ interface Store {
   updateBillHistory: (paymentId: string, hId: string, patch: Partial<BillHistoryEntry>) => void;
   deleteBillHistory: (paymentId: string, hId: string) => void;
   // bulk import
-  importPayments: (rows: { kind: Payment['kind']; categoryName: string; name: string; provider: string; accountRef: string; amount: number; frequency: Payment['frequency']; startDate: string; endDate?: string; notes?: string }[], mode: 'merge' | 'replace', scopeKind?: Payment['kind']) => void;
+  importPayments: (rows: { kind: Payment['kind']; categoryName: string; name: string; provider: string; accountRef: string; amount: number; frequency: Payment['frequency']; startDate: string; endDate?: string; notes?: string; balance?: number; apr?: number; minPayment?: number; overpayment?: number }[], mode: 'merge' | 'replace', scopeKind?: Payment['kind']) => void;
   importYearlyEvents: (rows: Omit<YearlyEvent, 'id'>[], mode: 'merge' | 'replace') => void;
   importFullState: (s: AppState) => void;
+
+  // ---- Council Tax ----
+  setCouncilTax: (patch: Partial<CouncilTaxInfo> | undefined) => void;
+  addCouncilTaxHistory: (h: Omit<CouncilTaxHistoryEntry, 'id'>) => void;
+  updateCouncilTaxHistory: (id: string, patch: Partial<CouncilTaxHistoryEntry>) => void;
+  deleteCouncilTaxHistory: (id: string) => void;
+  importCouncilTaxHistory: (rows: Omit<CouncilTaxHistoryEntry, 'id'>[], mode: 'merge' | 'replace') => void;
+
+  // ---- Spending ----
+  setSpendingMonthlyBudget: (n: number | undefined) => void;
+  addSpending: (e: Omit<SpendingEntry, 'id'>) => void;
+  updateSpending: (id: string, patch: Partial<SpendingEntry>) => void;
+  deleteSpending: (id: string) => void;
+  importSpending: (rows: Omit<SpendingEntry, 'id'>[], mode: 'merge' | 'replace') => void;
+
+  // ---- Provider overrides ----
+  setProviderOverride: (key: string, override: ProviderOverride | undefined) => void;
 }
 
 const uid = () => crypto.randomUUID();
@@ -118,7 +137,12 @@ function hydrate(parsed: Partial<AppState>): AppState {
     budgets: parsed.budgets ?? [],
     housing,
     home: parsed.home,
-    employers: (parsed.employers ?? []).map(e => ({ ...e, wageSlips: e.wageSlips ?? [] }))
+    employers: (parsed.employers ?? []).map(e => ({ ...e, wageSlips: e.wageSlips ?? [] })),
+    councilTax: parsed.councilTax,
+    councilTaxHistory: parsed.councilTaxHistory ?? [],
+    spending: (parsed.spending ?? []).map(s => ({ ...s, attachments: s.attachments ?? [] })),
+    spendingMonthlyBudget: parsed.spendingMonthlyBudget,
+    providerOverrides: parsed.providerOverrides ?? {}
   };
 }
 
@@ -304,6 +328,37 @@ export const useFinanceStore = create<Store>((set, get) => ({
       : [...s.yearlyEvents, ...rows.map(r => ({ ...r, id: uid() }))]
   })),
 
+  // ---- Council Tax ----
+  setCouncilTax: (patch) => get().apply(s => ({ ...s, councilTax: patch ? { ...(s.councilTax ?? {} as CouncilTaxInfo), ...patch } : undefined })),
+  addCouncilTaxHistory: (h) => get().apply(s => ({ ...s, councilTaxHistory: [...s.councilTaxHistory, { ...h, id: uid() }] })),
+  updateCouncilTaxHistory: (id, patch) => get().apply(s => ({ ...s, councilTaxHistory: s.councilTaxHistory.map(x => x.id === id ? { ...x, ...patch } : x) })),
+  deleteCouncilTaxHistory: (id) => get().apply(s => ({ ...s, councilTaxHistory: s.councilTaxHistory.filter(x => x.id !== id) })),
+  importCouncilTaxHistory: (rows, mode) => get().apply(s => ({
+    ...s,
+    councilTaxHistory: mode === 'replace'
+      ? rows.map(r => ({ ...r, id: uid() }))
+      : [...s.councilTaxHistory, ...rows.map(r => ({ ...r, id: uid() }))]
+  })),
+
+  // ---- Spending ----
+  setSpendingMonthlyBudget: (n) => get().apply(s => ({ ...s, spendingMonthlyBudget: n })),
+  addSpending: (e) => get().apply(s => ({ ...s, spending: [...s.spending, { ...e, id: uid() }] })),
+  updateSpending: (id, patch) => get().apply(s => ({ ...s, spending: s.spending.map(x => x.id === id ? { ...x, ...patch } : x) })),
+  deleteSpending: (id) => get().apply(s => ({ ...s, spending: s.spending.filter(x => x.id !== id) })),
+  importSpending: (rows, mode) => get().apply(s => ({
+    ...s,
+    spending: mode === 'replace'
+      ? rows.map(r => ({ ...r, id: uid() }))
+      : [...s.spending, ...rows.map(r => ({ ...r, id: uid() }))]
+  })),
+
+  // ---- Provider overrides ----
+  setProviderOverride: (key, override) => get().apply(s => {
+    const next = { ...(s.providerOverrides ?? {}) };
+    if (override) next[key] = override; else delete next[key];
+    return { ...s, providerOverrides: next };
+  }),
+
   addAsset: (a) => get().apply(s => ({ ...s, assets: [...(s.assets ?? []), { ...a, id: uid() }] })),
   updateAsset: (id, patch) => get().apply(s => ({ ...s, assets: (s.assets ?? []).map(x => x.id === id ? { ...x, ...patch } : x) })),
   deleteAsset: (id) => get().apply(s => ({ ...s, assets: (s.assets ?? []).filter(x => x.id !== id) })),
@@ -385,6 +440,7 @@ export const useFinanceStore = create<Store>((set, get) => ({
       kind: r.kind, name: r.name, provider: r.provider, accountRef: r.accountRef,
       amount: r.amount, frequency: r.frequency, startDate: r.startDate,
       endDate: r.endDate, notes: r.notes,
+      balance: r.balance, apr: r.apr, minPayment: r.minPayment, overpayment: r.overpayment,
       categoryId: findOrCreate(r.categoryName, r.kind)
     }));
     let basePayments: Payment[];

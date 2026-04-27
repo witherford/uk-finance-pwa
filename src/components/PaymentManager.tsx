@@ -3,6 +3,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { Category, Frequency, Payment, PaymentKind, SortMode } from '../types';
 import { FrequencySelect, Money, Field, Empty, NumInput } from './common';
 import { BillHistory } from './BillHistory';
+import { ProviderLogo } from './ProviderLogo';
 import { annualAmount, freqLabel, isActive } from '../lib/frequency';
 
 export function PaymentManager({ kind, title }: { kind: PaymentKind; title: string }) {
@@ -279,11 +280,14 @@ function PaymentRowDesktop({ p, categories, onUpdate, onDelete }: {
     <>
       <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
         <td className="table-td">
-          <button className="text-left w-full" onClick={() => setOpen(o => !o)}>
-            <div className="font-medium">{p.name || <span className="text-slate-400 italic">(unnamed)</span>}</div>
-            {(p.provider || p.accountRef) && (
-              <div className="text-xs text-slate-500 truncate">{[p.provider, p.accountRef].filter(Boolean).join(' · ')}</div>
-            )}
+          <button className="text-left w-full flex items-center gap-2" onClick={() => setOpen(o => !o)}>
+            <ProviderLogo name={p.provider || p.name} size={24} />
+            <span className="min-w-0 flex-1">
+              <div className="font-medium truncate">{p.name || <span className="text-slate-400 italic">(unnamed)</span>}</div>
+              {(p.provider || p.accountRef) && (
+                <div className="text-xs text-slate-500 truncate">{[p.provider, p.accountRef].filter(Boolean).join(' · ')}</div>
+              )}
+            </span>
           </button>
         </td>
         <td className="table-td tabular-nums"><Money value={p.amount} /></td>
@@ -324,6 +328,7 @@ function PaymentRowMobile({ p, categories, onUpdate, onDelete }: {
     <li className="p-4">
       <button className="w-full flex items-center gap-3 text-left" onClick={() => setOpen(o => !o)}>
         <span className="w-2 h-10 rounded-full shrink-0" style={{ background: cat?.color ?? '#94a3b8' }} />
+        <ProviderLogo name={p.provider || p.name} size={32} />
         <div className="flex-1 min-w-0">
           <div className="font-semibold truncate">{p.name || <span className="text-slate-400 italic">(unnamed)</span>}</div>
           <div className="text-xs text-slate-500">
@@ -350,6 +355,7 @@ function PaymentEditFields({ p, categories, onUpdate }: {
   categories: Category[];
   onUpdate: (id: string, patch: Partial<Payment>) => void;
 }) {
+  const isDebt = p.kind === 'debt';
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -367,6 +373,17 @@ function PaymentEditFields({ p, categories, onUpdate }: {
         <Field label="Provider"><input className="input" value={p.provider} onChange={e => onUpdate(p.id, { provider: e.target.value })} /></Field>
         <Field label="Account / policy #"><input className="input" value={p.accountRef} onChange={e => onUpdate(p.id, { accountRef: e.target.value })} /></Field>
       </div>
+      {isDebt && (
+        <div className="mt-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
+          <div className="font-semibold text-sm mb-2">💳 Debt details — power the Total debt stat and the strategy simulator</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Outstanding balance (£)"><NumInput value={p.balance ?? 0} onChange={n => onUpdate(p.id, { balance: n })} step="0.01" /></Field>
+            <Field label="APR %"><NumInput value={p.apr ?? 0} onChange={n => onUpdate(p.id, { apr: n })} step="0.01" /></Field>
+            <Field label="Minimum payment (£/mo)"><NumInput value={p.minPayment ?? 0} onChange={n => onUpdate(p.id, { minPayment: n })} step="0.01" /></Field>
+            <Field label="Overpayment (£/mo)"><NumInput value={p.overpayment ?? 0} onChange={n => onUpdate(p.id, { overpayment: n })} step="0.01" /></Field>
+          </div>
+        </div>
+      )}
       <BillHistory paymentId={p.id} history={p.history ?? []} />
     </div>
   );

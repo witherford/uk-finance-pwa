@@ -28,7 +28,7 @@ export function Income() {
 
   return (
     <div>
-      <PageHeader title="Income / Taxes / Employment" subtitle="UK 2025/26 bands. Estimates only — verify against gov.uk." />
+      <PageHeader title="Income/Tax/Employment" subtitle="UK 2025/26 bands. Estimates only — verify against gov.uk." />
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 card card-pad space-y-3">
