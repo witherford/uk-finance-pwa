@@ -58,7 +58,7 @@ interface Store {
   // demo
   loadDemo: () => void;
   // bulk import
-  importPayments: (rows: { kind: Payment['kind']; categoryName: string; name: string; provider: string; accountRef: string; amount: number; frequency: Payment['frequency']; startDate: string; endDate?: string; notes?: string }[], mode: 'merge' | 'replace') => void;
+  importPayments: (rows: { kind: Payment['kind']; categoryName: string; name: string; provider: string; accountRef: string; amount: number; frequency: Payment['frequency']; startDate: string; endDate?: string; notes?: string }[], mode: 'merge' | 'replace', scopeKind?: Payment['kind']) => void;
   importFullState: (s: AppState) => void;
 }
 
@@ -265,7 +265,7 @@ export const useFinanceStore = create<Store>((set, get) => ({
     ]
   })),
 
-  importPayments: (rows, mode) => get().apply(s => {
+  importPayments: (rows, mode, scopeKind) => get().apply(s => {
     const cats = [...s.categories];
     const findOrCreate = (name: string, kind: Payment['kind']): string => {
       const existing = cats.find(c => c.name.toLowerCase() === name.toLowerCase() && c.kind === kind);
@@ -282,10 +282,17 @@ export const useFinanceStore = create<Store>((set, get) => ({
       endDate: r.endDate, notes: r.notes,
       categoryId: findOrCreate(r.categoryName, r.kind)
     }));
+    let basePayments: Payment[];
+    if (mode === 'replace') {
+      // If a scopeKind is given (e.g. 'debt'), only replace that kind — leave others intact.
+      basePayments = scopeKind ? s.payments.filter(p => p.kind !== scopeKind) : [];
+    } else {
+      basePayments = s.payments;
+    }
     return {
       ...s,
       categories: cats,
-      payments: mode === 'replace' ? newPayments : [...s.payments, ...newPayments]
+      payments: [...basePayments, ...newPayments]
     };
   }),
 

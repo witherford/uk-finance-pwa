@@ -49,32 +49,59 @@ function step(date: Date, freq: Frequency): Date {
   }
 }
 
+function isValidDate(d: Date): boolean {
+  return d instanceof Date && !isNaN(d.getTime());
+}
+
 export function expandOccurrences(
   p: Payment | { amount: number; frequency: Frequency; startDate: string; endDate?: string },
   fromDate: Date,
   toDate: Date
 ): Date[] {
   const out: Date[] = [];
+  if (!p || !p.startDate) return out;
   const start = parseISO(p.startDate);
+  if (!isValidDate(start)) return out;
   const end = p.endDate ? parseISO(p.endDate) : null;
+  if (end && !isValidDate(end)) return out;
+  if (!isValidDate(fromDate) || !isValidDate(toDate)) return out;
+  if (isAfter(fromDate, toDate)) return out;
+
   if (p.frequency === 'oneoff') {
     if (!isBefore(start, fromDate) && !isAfter(start, toDate)) out.push(start);
     return out;
   }
   let cur = new Date(start);
+  // Hard safety cap — protects against any edge case (bad date math, future bugs)
+  // that would otherwise spin the loop forever and crash the tab.
+  const MAX_ITER = 10_000;
+  let safety = 0;
   // fast-forward
-  while (isBefore(cur, fromDate)) cur = step(cur, p.frequency);
-  while (!isAfter(cur, toDate)) {
+  while (isBefore(cur, fromDate) && safety++ < MAX_ITER) {
+    const next = step(cur, p.frequency);
+    if (!isValidDate(next) || next.getTime() === cur.getTime()) return out;
+    cur = next;
+  }
+  if (safety >= MAX_ITER) return out;
+  safety = 0;
+  while (!isAfter(cur, toDate) && safety++ < MAX_ITER) {
     if (end && isAfter(cur, end)) break;
     out.push(new Date(cur));
-    cur = step(cur, p.frequency);
+    const next = step(cur, p.frequency);
+    if (!isValidDate(next) || next.getTime() === cur.getTime()) break;
+    cur = next;
   }
   return out;
 }
 
 export function isActive(p: Payment, on: Date = new Date()): boolean {
+  if (!p || !p.startDate) return false;
   const start = parseISO(p.startDate);
+  if (!isValidDate(start)) return false;
   if (isAfter(start, on)) return false;
-  if (p.endDate && isAfter(on, parseISO(p.endDate))) return false;
+  if (p.endDate) {
+    const end = parseISO(p.endDate);
+    if (isValidDate(end) && isAfter(on, end)) return false;
+  }
   return true;
 }

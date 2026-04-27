@@ -34,17 +34,7 @@ export function DebtImport() {
     if (!preview) return;
     const valid = preview.filter(r => r.ok && r.payment).map(r => r.payment!);
     if (valid.length === 0) return;
-    // We ask the store to do a *debt-scoped* replace if the user picked replace, by
-    // first removing existing debts and then adding the new ones. Since the store's
-    // importPayments only knows merge|replace at the global level, we approximate with merge:
-    importPayments(valid, 'merge');
-    if (mode === 'replace') {
-      // Manually delete previous debts (those not in the freshly imported set).
-      // We've just merged new debts in, but we still have the old ones — wipe by ids.
-      const newSet = new Set(valid.map(v => v.name + '|' + v.amount));
-      const stale = state.payments.filter(p => p.kind === 'debt' && !newSet.has(p.name + '|' + p.amount));
-      stale.forEach(p => useFinanceStore.getState().deletePayment(p.id));
-    }
+    importPayments(valid, mode, 'debt');
     setPreview(null);
     setOpen(false);
     alert(`${valid.length} debts imported.`);
