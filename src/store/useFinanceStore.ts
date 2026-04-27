@@ -261,9 +261,36 @@ export const useFinanceStore = create<Store>((set, get) => ({
   deleteCalcMemory: (id) => get().apply(s => ({ ...s, calcMemory: s.calcMemory.filter(m => m.id !== id) })),
 
   // ---- Housing ----
-  setHousingType: (t) => get().apply(s => ({ ...s, housing: { ...s.housing, type: t } })),
-  setMortgage: (patch) => get().apply(s => ({ ...s, housing: { ...s.housing, mortgage: patch ? { ...(s.housing.mortgage ?? {} as MortgageInfo), ...patch } : undefined } })),
-  setRent: (patch) => get().apply(s => ({ ...s, housing: { ...s.housing, rent: patch ? { ...(s.housing.rent ?? {} as RentInfo), ...patch } : undefined } })),
+  setHousingType: (t) => get().apply(s => {
+    // When the user picks Mortgage / Rent for the first time we seed a default object so
+    // downstream code always has a fully-populated record (avoids partial-state crashes).
+    const today = new Date().toISOString().slice(0, 10);
+    let mortgage = s.housing.mortgage;
+    let rent = s.housing.rent;
+    if (t === 'mortgage' && !mortgage) {
+      mortgage = { costPerMonth: 0, interestRatePct: 0, rateType: 'fixed', provider: '', accountRef: '', termYears: 25, startDate: today };
+    }
+    if (t === 'rent' && !rent) {
+      rent = { costPerMonth: 0, rateType: 'fixed', provider: '', accountRef: '', termMonths: 12, startDate: today };
+    }
+    return { ...s, housing: { ...s.housing, type: t, mortgage, rent } };
+  }),
+  setMortgage: (patch) => get().apply(s => {
+    if (!patch) return { ...s, housing: { ...s.housing, mortgage: undefined } };
+    const today = new Date().toISOString().slice(0, 10);
+    const base: MortgageInfo = s.housing.mortgage ?? {
+      costPerMonth: 0, interestRatePct: 0, rateType: 'fixed', provider: '', accountRef: '', termYears: 25, startDate: today
+    };
+    return { ...s, housing: { ...s.housing, mortgage: { ...base, ...patch } } };
+  }),
+  setRent: (patch) => get().apply(s => {
+    if (!patch) return { ...s, housing: { ...s.housing, rent: undefined } };
+    const today = new Date().toISOString().slice(0, 10);
+    const base: RentInfo = s.housing.rent ?? {
+      costPerMonth: 0, rateType: 'fixed', provider: '', accountRef: '', termMonths: 12, startDate: today
+    };
+    return { ...s, housing: { ...s.housing, rent: { ...base, ...patch } } };
+  }),
   addTenancyHistory: (h) => get().apply(s => ({ ...s, housing: { ...s.housing, tenancyHistory: [...s.housing.tenancyHistory, { ...h, id: uid() }] } })),
   updateTenancyHistory: (id, patch) => get().apply(s => ({ ...s, housing: { ...s.housing, tenancyHistory: s.housing.tenancyHistory.map(x => x.id === id ? { ...x, ...patch } : x) } })),
   deleteTenancyHistory: (id) => get().apply(s => ({ ...s, housing: { ...s.housing, tenancyHistory: s.housing.tenancyHistory.filter(x => x.id !== id) } })),
@@ -329,7 +356,15 @@ export const useFinanceStore = create<Store>((set, get) => ({
   })),
 
   // ---- Council Tax ----
-  setCouncilTax: (patch) => get().apply(s => ({ ...s, councilTax: patch ? { ...(s.councilTax ?? {} as CouncilTaxInfo), ...patch } : undefined })),
+  setCouncilTax: (patch) => get().apply(s => {
+    if (!patch) return { ...s, councilTax: undefined };
+    const base: CouncilTaxInfo = s.councilTax ?? {
+      council: '', band: 'D', plan: '12-monthly', accountRef: '',
+      monthlyCost: 0, costIncludesDiscount: false, singleOccupancyDiscount: false,
+      discountPct: 25, yearStartMonth: 4
+    };
+    return { ...s, councilTax: { ...base, ...patch } };
+  }),
   addCouncilTaxHistory: (h) => get().apply(s => ({ ...s, councilTaxHistory: [...s.councilTaxHistory, { ...h, id: uid() }] })),
   updateCouncilTaxHistory: (id, patch) => get().apply(s => ({ ...s, councilTaxHistory: s.councilTaxHistory.map(x => x.id === id ? { ...x, ...patch } : x) })),
   deleteCouncilTaxHistory: (id) => get().apply(s => ({ ...s, councilTaxHistory: s.councilTaxHistory.filter(x => x.id !== id) })),

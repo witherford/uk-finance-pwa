@@ -19,12 +19,14 @@ export function CouncilTaxCard() {
   const [showHistory, setShowHistory] = useState(false);
   const [showIO, setShowIO] = useState(false);
 
-  const c: CouncilTaxInfo = ct ?? {
+  const CT_DEFAULTS: CouncilTaxInfo = {
     council: '', band: 'D', plan: '12-monthly', accountRef: '',
     monthlyCost: 0, costIncludesDiscount: false,
     singleOccupancyDiscount: false, discountPct: 25,
     yearStartMonth: 4
   };
+  // Merge live data over defaults so partial saved data never crashes downstream callers.
+  const c: CouncilTaxInfo = { ...CT_DEFAULTS, ...(ct ?? {}) };
   const eff = effectiveCouncilTaxMonthly(c);
   const annual = councilTaxAnnual(c);
 

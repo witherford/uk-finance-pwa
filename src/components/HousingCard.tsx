@@ -35,12 +35,17 @@ export function HousingCard() {
   );
 }
 
+const MORTGAGE_DEFAULTS: MortgageInfo = {
+  costPerMonth: 0, interestRatePct: 0, rateType: 'fixed', provider: '',
+  accountRef: '', termYears: 25, startDate: new Date().toISOString().slice(0, 10)
+};
+
 function MortgageEditor({ mortgage, hasHome }: { mortgage?: MortgageInfo; hasHome: boolean }) {
   const setMortgage = useFinanceStore(s => s.setMortgage);
-  const m: MortgageInfo = mortgage ?? {
-    costPerMonth: 0, interestRatePct: 0, rateType: 'fixed', provider: '',
-    accountRef: '', termYears: 25, startDate: new Date().toISOString().slice(0, 10)
-  };
+  // Merge over defaults so a partial saved mortgage (created by setMortgage with a single
+  // patch) always has every field populated when rendered, even after store state mutations.
+  const m: MortgageInfo = { ...MORTGAGE_DEFAULTS, ...(mortgage ?? {}) };
+  if (!m.startDate) m.startDate = new Date().toISOString().slice(0, 10);
   const autoEnd = endDateFromYears(m.startDate, m.termYears);
   const showEnd = m.endDateOverridden ? (m.endDate ?? '') : (autoEnd ?? '');
 
@@ -98,16 +103,19 @@ function MortgageEditor({ mortgage, hasHome }: { mortgage?: MortgageInfo; hasHom
   );
 }
 
+const RENT_DEFAULTS: RentInfo = {
+  costPerMonth: 0, rateType: 'fixed', provider: '',
+  accountRef: '', termMonths: 12, startDate: new Date().toISOString().slice(0, 10)
+};
+
 function RentEditor({ rent, history }: { rent?: RentInfo; history: TenancyHistoryEntry[] }) {
   const setRent = useFinanceStore(s => s.setRent);
   const addTH = useFinanceStore(s => s.addTenancyHistory);
   const updateTH = useFinanceStore(s => s.updateTenancyHistory);
   const deleteTH = useFinanceStore(s => s.deleteTenancyHistory);
 
-  const r: RentInfo = rent ?? {
-    costPerMonth: 0, rateType: 'fixed', provider: '',
-    accountRef: '', termMonths: 12, startDate: new Date().toISOString().slice(0, 10)
-  };
+  const r: RentInfo = { ...RENT_DEFAULTS, ...(rent ?? {}) };
+  if (!r.startDate) r.startDate = new Date().toISOString().slice(0, 10);
   const autoEnd = endDateFromMonths(r.startDate, r.termMonths);
   const showEnd = r.endDateOverridden ? (r.endDate ?? '') : (autoEnd ?? '');
 

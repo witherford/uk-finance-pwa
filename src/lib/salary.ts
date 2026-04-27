@@ -14,7 +14,9 @@ export function taxYearStart(d: Date = new Date()): Date {
  * Returns null if the slip date is invalid or YTD is non-positive.
  */
 export function annualiseFromSlip(slip: WageSlip): number | null {
-  const d = parseISO(slip.payDate);
+  if (!slip || !slip.payDate || typeof slip.payDate !== 'string') return null;
+  let d: Date;
+  try { d = parseISO(slip.payDate); } catch { return null; }
   if (!isValid(d) || !slip.ytdGross || slip.ytdGross <= 0) return null;
   const start = taxYearStart(d);
   const days = differenceInDays(d, start);
@@ -37,7 +39,9 @@ export function latestSlip(employers: Employer[]): { slip: WageSlip; employer: E
   let best: { slip: WageSlip; employer: Employer } | null = null;
   for (const e of employers) {
     for (const s of e.wageSlips ?? []) {
-      if (!best || (s.payDate ?? '') > best.slip.payDate) best = { slip: s, employer: e };
+      // Skip malformed slips (e.g. an import that left payDate empty) — they would crash downstream parseISO.
+      if (!s || !s.payDate || typeof s.payDate !== 'string') continue;
+      if (!best || s.payDate > best.slip.payDate) best = { slip: s, employer: e };
     }
   }
   return best;
