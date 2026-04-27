@@ -39,6 +39,14 @@ export function HomeValuations() {
   const [vSource, setVSource] = useState<ValuationSource>('self');
   const [vNotes, setVNotes] = useState('');
 
+  // IMPORTANT: All hooks must run on every render, in the same order, to avoid
+  // React error #310 ("rendered more hooks than during the previous render").
+  // So compute these BEFORE any early return.
+  const sortedValuations = useMemo(
+    () => [...(home?.valuations ?? [])].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)),
+    [home?.valuations]
+  );
+
   if (housingType !== 'mortgage') return null;
 
   if (!home) {
@@ -68,7 +76,6 @@ export function HomeValuations() {
     );
   }
 
-  const sortedValuations = useMemo(() => [...home.valuations].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)), [home.valuations]);
   const latest = sortedValuations[sortedValuations.length - 1];
   const series = sortedValuations.map(v => ({ x: v.yearMonth, value: v.value, source: v.source }));
   // Prepend purchase as starting point
