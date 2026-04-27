@@ -1,4 +1,11 @@
 import { PaymentManager } from '../components/PaymentManager';
+import { DebtImport } from '../components/DebtImport';
+
 export function DebtsPage() {
-  return <PaymentManager kind="debt" title="Debts" />;
+  return (
+    <>
+      <DebtImport />
+      <PaymentManager kind="debt" title="Debts" />
+    </>
+  );
 }
