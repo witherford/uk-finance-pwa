@@ -26,6 +26,7 @@ import { Providers } from './pages/Providers';
 import { CommandPalette } from './components/CommandPalette';
 import { InstallPrompt } from './components/InstallPrompt';
 import { OfflineBadge } from './components/OfflineBadge';
+import { UpdateBanner } from './components/UpdateBanner';
 import { refreshBankHolidays } from './lib/bank-holidays';
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
       <CommandPalette />
       <InstallPrompt />
       <OfflineBadge />
+      <UpdateBanner />
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />

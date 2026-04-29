@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { Field, PageHeader, GovLinks } from '../components/common';
 import { isAppInstalled, platform } from '../components/InstallPrompt';
+import { UpdateStatusCard } from '../components/UpdateStatusCard';
 import { GOV_UK } from '../lib/gov-uk-links';
 
 export function Settings() {
@@ -24,6 +25,8 @@ export function Settings() {
       <PageHeader title="Settings" subtitle="Personalisation, theme, password, and data controls" />
 
       <div className="grid lg:grid-cols-2 gap-5">
+        <UpdateStatusCard />
+
         <section className="card card-pad space-y-3">
           <div className="font-semibold">Personalisation</div>
           <Field label="First name (used on dashboard)">
